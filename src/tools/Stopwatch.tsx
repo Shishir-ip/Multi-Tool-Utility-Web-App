@@ -64,13 +64,13 @@ export default function Stopwatch() {
 
   return (
     <div
-      className={`flex flex-col items-center justify-center min-h-[80vh] ${isFullscreen ? 'fullscreen-mode' : ''}`}
+      className={`flex flex-col items-center justify-center min-h-[80vh] px-4 ${isFullscreen ? 'fullscreen-mode' : ''}`}
       style={{ background: '#000000' }}
     >
       <div className="absolute top-4 right-4 z-10">
         <button
           onClick={toggleFullscreen}
-          className="px-4 py-2 rounded-lg text-sm font-medium"
+          className="px-3 py-2 sm:px-4 sm:py-2 rounded-lg text-xs sm:text-sm font-medium"
           style={{ background: '#1a1a1a', color: '#ffffff', border: '1px solid #333' }}
         >
           <i className={`fas ${isFullscreen ? 'fa-compress' : 'fa-expand'}`}></i>
@@ -79,70 +79,72 @@ export default function Stopwatch() {
 
       {/* Time Display */}
       <div
-        className="font-mono font-bold tracking-tight mb-8"
+        className="font-mono font-bold tracking-tight mb-6 sm:mb-8 text-center px-2"
         style={{
-          fontSize: isFullscreen ? '15vw' : 'clamp(3rem, 10vw, 8rem)',
+          fontSize: isFullscreen ? 'min(15vw, 12rem)' : 'clamp(2.5rem, 10vw, 8rem)',
           color: '#ffffff',
-          textShadow: '0 0 30px rgba(255, 255, 255, 0.08)'
+          textShadow: '0 0 30px rgba(255, 255, 255, 0.08)',
+          wordBreak: 'keep-all',
+          overflowWrap: 'normal'
         }}
       >
         {formatTime(elapsed)}
       </div>
 
-      {/* Controls */}
-      <div className="flex gap-4 mb-8">
+      {/* Controls — wraps on mobile */}
+      <div className="flex flex-wrap justify-center gap-2 sm:gap-4 mb-6 sm:mb-8 px-2">
         {!running ? (
           <button
             onClick={start}
-            className="px-8 py-3 rounded-xl font-semibold text-lg transition-all hover:scale-105"
+            className="px-5 sm:px-8 py-2.5 sm:py-3 rounded-xl font-semibold text-sm sm:text-lg transition-all hover:scale-105"
             style={{ background: '#10b981', color: '#ffffff' }}
           >
-            <i className="fas fa-play mr-2"></i> Start
+            <i className="fas fa-play mr-1 sm:mr-2"></i> Start
           </button>
         ) : (
           <button
             onClick={pause}
-            className="px-8 py-3 rounded-xl font-semibold text-lg transition-all hover:scale-105"
+            className="px-5 sm:px-8 py-2.5 sm:py-3 rounded-xl font-semibold text-sm sm:text-lg transition-all hover:scale-105"
             style={{ background: '#f59e0b', color: '#ffffff' }}
           >
-            <i className="fas fa-pause mr-2"></i> Pause
+            <i className="fas fa-pause mr-1 sm:mr-2"></i> Pause
           </button>
         )}
         {running && (
           <button
             onClick={lap}
-            className="px-8 py-3 rounded-xl font-semibold text-lg transition-all hover:scale-105"
+            className="px-5 sm:px-8 py-2.5 sm:py-3 rounded-xl font-semibold text-sm sm:text-lg transition-all hover:scale-105"
             style={{ background: '#3b82f6', color: '#ffffff' }}
           >
-            <i className="fas fa-flag mr-2"></i> Lap
+            <i className="fas fa-flag mr-1 sm:mr-2"></i> Lap
           </button>
         )}
         <button
           onClick={reset}
-          className="px-8 py-3 rounded-xl font-semibold text-lg transition-all hover:scale-105"
+          className="px-5 sm:px-8 py-2.5 sm:py-3 rounded-xl font-semibold text-sm sm:text-lg transition-all hover:scale-105"
           style={{ background: '#333333', color: '#ffffff', border: '1px solid #555' }}
         >
-          <i className="fas fa-redo mr-2"></i> Reset
+          <i className="fas fa-redo mr-1 sm:mr-2"></i> Reset
         </button>
       </div>
 
       {/* Lap History */}
       {laps.length > 0 && (
-        <div className="w-full max-w-lg overflow-auto" style={{ maxHeight: '30vh' }}>
+        <div className="w-full max-w-lg overflow-auto px-2" style={{ maxHeight: '30vh' }}>
           <table className="w-full">
             <thead>
               <tr style={{ color: '#888888' }}>
-                <th className="text-left py-2 px-4 text-sm font-medium">Lap</th>
-                <th className="text-right py-2 px-4 text-sm font-medium">Split</th>
-                <th className="text-right py-2 px-4 text-sm font-medium">Total</th>
+                <th className="text-left py-2 px-2 sm:px-4 text-xs sm:text-sm font-medium">Lap</th>
+                <th className="text-right py-2 px-2 sm:px-4 text-xs sm:text-sm font-medium">Split</th>
+                <th className="text-right py-2 px-2 sm:px-4 text-xs sm:text-sm font-medium">Total</th>
               </tr>
             </thead>
             <tbody>
               {laps.map(l => (
                 <tr key={l.id} style={{ borderTop: '1px solid #222' }}>
-                  <td className="py-2 px-4 font-mono" style={{ color: '#ffffff' }}>#{l.id}</td>
-                  <td className="py-2 px-4 font-mono text-right" style={{ color: '#10b981' }}>{formatTime(l.split)}</td>
-                  <td className="py-2 px-4 font-mono text-right" style={{ color: '#aaaaaa' }}>{formatTime(l.time)}</td>
+                  <td className="py-2 px-2 sm:px-4 font-mono text-xs sm:text-sm" style={{ color: '#ffffff' }}>#{l.id}</td>
+                  <td className="py-2 px-2 sm:px-4 font-mono text-right text-xs sm:text-sm" style={{ color: '#10b981' }}>{formatTime(l.split)}</td>
+                  <td className="py-2 px-2 sm:px-4 font-mono text-right text-xs sm:text-sm" style={{ color: '#aaaaaa' }}>{formatTime(l.time)}</td>
                 </tr>
               ))}
             </tbody>

@@ -33,28 +33,28 @@ export default function DigitalClock() {
 
   return (
     <div
-      className={`flex flex-col items-center justify-center min-h-[80vh] ${isFullscreen ? 'fullscreen-mode' : ''}`}
+      className={`flex flex-col items-center justify-center min-h-[80vh] px-4 ${isFullscreen ? 'fullscreen-mode' : ''}`}
       style={{ background: '#000000' }}
     >
-      {/* Controls */}
-      <div className="absolute top-4 right-4 flex gap-3 z-10">
+      {/* Controls — responsive positioning */}
+      <div className="absolute top-3 right-3 sm:top-4 sm:right-4 flex gap-1.5 sm:gap-3 z-10 flex-wrap justify-end max-w-[60vw]">
         <button
           onClick={() => setFormat24(!format24)}
-          className="px-4 py-2 rounded-lg text-sm font-medium transition-all"
+          className="px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-lg text-[10px] sm:text-sm font-medium transition-all"
           style={{ background: '#1a1a1a', color: '#ffffff', border: '1px solid #333' }}
         >
           {format24 ? '24H' : '12H'}
         </button>
         <button
           onClick={() => setShowSeconds(!showSeconds)}
-          className="px-4 py-2 rounded-lg text-sm font-medium transition-all"
-          style={{ background: '#1a1a1a', color: '#ffffff', border: '1px solid #333' }}
+          className="px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-lg text-[10px] sm:text-sm font-medium transition-all"
+          style={{ background: showSeconds ? '#333' : '#1a1a1a', color: '#ffffff', border: '1px solid #333' }}
         >
-          {showSeconds ? ':SS' : ':SS'}
+          :SS
         </button>
         <button
           onClick={toggleFullscreen}
-          className="px-4 py-2 rounded-lg text-sm font-medium transition-all"
+          className="px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-lg text-[10px] sm:text-sm font-medium transition-all"
           style={{ background: '#1a1a1a', color: '#ffffff', border: '1px solid #333' }}
         >
           <i className={`fas ${isFullscreen ? 'fa-compress' : 'fa-expand'}`}></i>
@@ -62,14 +62,17 @@ export default function DigitalClock() {
       </div>
 
       {/* Time Display */}
-      <div className="text-center">
+      <div className="text-center w-full overflow-hidden">
         <div
           className="font-mono font-bold tracking-tight"
           style={{
-            fontSize: isFullscreen ? '20vw' : 'clamp(4rem, 15vw, 12rem)',
+            fontSize: isFullscreen ? 'min(18vw, 14rem)' : 'clamp(3rem, 14vw, 12rem)',
             color: '#ffffff',
             textShadow: '0 0 40px rgba(255, 255, 255, 0.1)',
-            lineHeight: 1
+            lineHeight: 1,
+            wordBreak: 'keep-all',
+            overflowWrap: 'normal',
+            whiteSpace: 'nowrap'
           }}
         >
           {hours.toString().padStart(2, '0')}
@@ -82,7 +85,7 @@ export default function DigitalClock() {
             </>
           )}
           {!format24 && (
-            <span className="ml-4" style={{ fontSize: '0.3em', opacity: 0.5, verticalAlign: 'super' }}>
+            <span className="ml-2 sm:ml-4" style={{ fontSize: '0.25em', opacity: 0.5, verticalAlign: 'super' }}>
               {ampm}
             </span>
           )}
@@ -90,9 +93,9 @@ export default function DigitalClock() {
 
         {/* Date */}
         <div
-          className="mt-6 font-light tracking-wide"
+          className="mt-4 sm:mt-6 font-light tracking-wide px-2"
           style={{
-            fontSize: isFullscreen ? '3vw' : 'clamp(1rem, 3vw, 2rem)',
+            fontSize: isFullscreen ? 'min(3vw, 2rem)' : 'clamp(0.8rem, 2.5vw, 2rem)',
             color: '#888888'
           }}
         >

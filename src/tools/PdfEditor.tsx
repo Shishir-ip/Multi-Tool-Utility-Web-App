@@ -7,7 +7,6 @@ export default function PdfEditor() {
   const [annotations, setAnnotations] = useState<{ page: number; type: 'text' | 'draw'; data: any }[]>([]);
   const [currentPage, setCurrentPage] = useState(0);
   const [textInput, setTextInput] = useState('');
-  const [textPosition, setTextPosition] = useState({ x: 50, y: 50 });
   const [isDrawing, setIsDrawing] = useState(false);
   const [drawPaths, setDrawPaths] = useState<{ page: number; points: { x: number; y: number }[] }[]>([]);
   const [currentPath, setCurrentPath] = useState<{ x: number; y: number }[]>([]);
@@ -48,7 +47,6 @@ export default function PdfEditor() {
       canvas.width = img.width;
       canvas.height = img.height;
       ctx.drawImage(img, 0, 0);
-      // Draw saved annotations for this page
       drawPaths.filter(p => p.page === currentPage).forEach(path => {
         if (path.points.length < 2) return;
         ctx.beginPath();
@@ -58,7 +56,6 @@ export default function PdfEditor() {
         path.points.forEach(pt => ctx.lineTo(pt.x, pt.y));
         ctx.stroke();
       });
-      // Draw text annotations
       annotations.filter(a => a.page === currentPage && a.type === 'text').forEach(a => {
         ctx.font = '16px sans-serif';
         ctx.fillStyle = '#000000';
@@ -72,13 +69,17 @@ export default function PdfEditor() {
     if (tool === 'draw') {
       setIsDrawing(true);
       const rect = canvasRef.current!.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
+      const scaleX = canvasRef.current!.width / rect.width;
+      const scaleY = canvasRef.current!.height / rect.height;
+      const x = (e.clientX - rect.left) * scaleX;
+      const y = (e.clientY - rect.top) * scaleY;
       setCurrentPath([{ x, y }]);
     } else if (tool === 'text') {
       const rect = canvasRef.current!.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
+      const scaleX = canvasRef.current!.width / rect.width;
+      const scaleY = canvasRef.current!.height / rect.height;
+      const x = (e.clientX - rect.left) * scaleX;
+      const y = (e.clientY - rect.top) * scaleY;
       if (textInput.trim()) {
         setAnnotations(prev => [...prev, { page: currentPage, type: 'text', data: { text: textInput, x, y } }]);
       }
@@ -88,10 +89,11 @@ export default function PdfEditor() {
   const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!isDrawing || tool !== 'draw') return;
     const rect = canvasRef.current!.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const scaleX = canvasRef.current!.width / rect.width;
+    const scaleY = canvasRef.current!.height / rect.height;
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
     setCurrentPath(prev => [...prev, { x, y }]);
-    // Draw current stroke
     const ctx = canvasRef.current!.getContext('2d')!;
     const img = new Image();
     img.onload = () => {
@@ -110,7 +112,6 @@ export default function PdfEditor() {
         ctx.fillStyle = '#000000';
         ctx.fillText(a.data.text, a.data.x, a.data.y);
       });
-      // Draw current path
       const allPoints = [...currentPath, { x, y }];
       if (allPoints.length >= 2) {
         ctx.beginPath();
@@ -139,12 +140,12 @@ export default function PdfEditor() {
 
   return (
     <div className="tool-container">
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>
+      <div className="mb-4 sm:mb-6">
+        <h2 className="text-xl sm:text-2xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>
           <i className="fas fa-edit mr-2" style={{ color: '#f59e0b' }}></i>
           Mini PDF Editor
         </h2>
-        <p style={{ color: 'var(--text-secondary)' }}>Load a PDF and add text or freehand drawings</p>
+        <p className="text-sm sm:text-base" style={{ color: 'var(--text-secondary)' }}>Load a PDF and add text or freehand drawings</p>
       </div>
 
       {!pdfFile ? (
@@ -153,30 +154,30 @@ export default function PdfEditor() {
           onClick={() => fileRef.current?.click()}
         >
           <input ref={fileRef} type="file" accept=".pdf" className="hidden" onChange={e => e.target.files?.[0] && loadPdf(e.target.files[0])} />
-          <i className="fas fa-file-pdf text-4xl mb-3" style={{ color: '#ef4444' }}></i>
-          <p className="font-medium" style={{ color: 'var(--text-primary)' }}>Click to load a PDF file</p>
-          <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>Select a PDF to begin editing</p>
+          <i className="fas fa-file-pdf text-3xl sm:text-4xl mb-3" style={{ color: '#ef4444' }}></i>
+          <p className="font-medium text-sm sm:text-base" style={{ color: 'var(--text-primary)' }}>Click to load a PDF file</p>
+          <p className="text-xs sm:text-sm mt-1" style={{ color: 'var(--text-muted)' }}>Select a PDF to begin editing</p>
         </div>
       ) : (
-        <div className="space-y-4">
-          {/* Toolbar */}
-          <div className="flex flex-wrap items-center gap-3 p-3 rounded-lg" style={{ background: 'var(--bg-tertiary)' }}>
+        <div className="space-y-3 sm:space-y-4">
+          {/* Toolbar — wraps on mobile */}
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg" style={{ background: 'var(--bg-tertiary)' }}>
             <button
               onClick={() => setTool(tool === 'text' ? null : 'text')}
-              className="btn-secondary text-sm flex items-center gap-2"
-              style={{ background: tool === 'text' ? 'var(--accent)' : undefined, color: tool === 'text' ? 'white' : undefined }}
+              className="btn-secondary text-xs sm:text-sm flex items-center gap-1.5 sm:gap-2"
+              style={{ background: tool === 'text' ? 'var(--accent)' : undefined, color: tool === 'text' ? 'white' : undefined, borderColor: tool === 'text' ? 'var(--accent)' : undefined }}
             >
-              <i className="fas fa-font"></i> Add Text
+              <i className="fas fa-font"></i> <span className="hidden sm:inline">Add Text</span><span className="sm:hidden">Text</span>
             </button>
             <button
               onClick={() => setTool(tool === 'draw' ? null : 'draw')}
-              className="btn-secondary text-sm flex items-center gap-2"
-              style={{ background: tool === 'draw' ? 'var(--accent)' : undefined, color: tool === 'draw' ? 'white' : undefined }}
+              className="btn-secondary text-xs sm:text-sm flex items-center gap-1.5 sm:gap-2"
+              style={{ background: tool === 'draw' ? 'var(--accent)' : undefined, color: tool === 'draw' ? 'white' : undefined, borderColor: tool === 'draw' ? 'var(--accent)' : undefined }}
             >
-              <i className="fas fa-pencil-alt"></i> Freehand Draw
+              <i className="fas fa-pencil-alt"></i> <span className="hidden sm:inline">Freehand Draw</span><span className="sm:hidden">Draw</span>
             </button>
-            <button onClick={clearAnnotations} className="btn-secondary text-sm flex items-center gap-2">
-              <i className="fas fa-eraser"></i> Clear Page
+            <button onClick={clearAnnotations} className="btn-secondary text-xs sm:text-sm flex items-center gap-1.5 sm:gap-2">
+              <i className="fas fa-eraser"></i> <span className="hidden sm:inline">Clear Page</span><span className="sm:hidden">Clear</span>
             </button>
             {tool === 'text' && (
               <input
@@ -184,29 +185,30 @@ export default function PdfEditor() {
                 value={textInput}
                 onChange={e => setTextInput(e.target.value)}
                 placeholder="Type text, then click on PDF..."
-                className="input-field flex-1 min-w-[200px]"
+                className="input-field flex-1 min-w-[150px] sm:min-w-[200px] text-sm"
               />
             )}
           </div>
 
           {/* Page Navigation */}
           {pdfPages.length > 1 && (
-            <div className="flex items-center gap-3">
-              <button onClick={() => setCurrentPage(Math.max(0, currentPage - 1))} disabled={currentPage === 0} className="btn-secondary text-sm">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <button onClick={() => setCurrentPage(Math.max(0, currentPage - 1))} disabled={currentPage === 0} className="btn-secondary text-sm p-2">
                 <i className="fas fa-chevron-left"></i>
               </button>
-              <span style={{ color: 'var(--text-secondary)' }}>Page {currentPage + 1} of {pdfPages.length}</span>
-              <button onClick={() => setCurrentPage(Math.min(pdfPages.length - 1, currentPage + 1))} disabled={currentPage === pdfPages.length - 1} className="btn-secondary text-sm">
+              <span className="text-xs sm:text-sm" style={{ color: 'var(--text-secondary)' }}>Page {currentPage + 1} of {pdfPages.length}</span>
+              <button onClick={() => setCurrentPage(Math.min(pdfPages.length - 1, currentPage + 1))} disabled={currentPage === pdfPages.length - 1} className="btn-secondary text-sm p-2">
                 <i className="fas fa-chevron-right"></i>
               </button>
             </div>
           )}
 
-          {/* Canvas */}
-          <div className="border rounded-lg overflow-auto" style={{ borderColor: 'var(--border-color)' }}>
+          {/* Canvas — responsive scrollable container */}
+          <div className="border rounded-lg overflow-auto" style={{ borderColor: 'var(--border-color)', maxHeight: '70vh' }}>
             <canvas
               ref={canvasRef}
               className="max-w-full cursor-crosshair"
+              style={{ display: 'block' }}
               onMouseDown={handleCanvasMouseDown}
               onMouseMove={handleCanvasMouseMove}
               onMouseUp={handleCanvasMouseUp}
@@ -215,9 +217,9 @@ export default function PdfEditor() {
           </div>
 
           {/* Actions */}
-          <div className="flex gap-3">
-            <button onClick={() => { setPdfFile(null); setPdfPages([]); setDrawPaths([]); setAnnotations([]); }} className="btn-secondary">
-              <i className="fas fa-folder-open mr-1"></i> Load Different PDF
+          <div className="flex flex-wrap gap-2 sm:gap-3">
+            <button onClick={() => { setPdfFile(null); setPdfPages([]); setDrawPaths([]); setAnnotations([]); }} className="btn-secondary text-sm flex items-center gap-2">
+              <i className="fas fa-folder-open"></i> Load Different PDF
             </button>
           </div>
         </div>
