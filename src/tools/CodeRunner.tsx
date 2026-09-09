@@ -40,31 +40,31 @@ export default function CodeRunner() {
 
   return (
     <div className="tool-container">
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>
+      <div className="mb-4 sm:mb-6">
+        <h2 className="text-xl sm:text-2xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>
           <i className="fas fa-code mr-2" style={{ color: '#10b981' }}></i>
           Live Code Runner
         </h2>
-        <p style={{ color: 'var(--text-secondary)' }}>Write HTML, CSS, and JavaScript and see results in real-time</p>
+        <p className="text-sm sm:text-base" style={{ color: 'var(--text-secondary)' }}>Write HTML, CSS, and JavaScript and see results in real-time</p>
       </div>
 
-      {/* Action Buttons */}
-      <div className="flex flex-wrap gap-3 mb-4">
-        <button onClick={runCode} className="btn-primary flex items-center gap-2">
+      {/* Action Buttons — wraps on mobile */}
+      <div className="flex flex-wrap gap-2 sm:gap-3 mb-4">
+        <button onClick={runCode} className="btn-primary flex items-center gap-2 text-sm">
           <i className="fas fa-play"></i> Run
         </button>
-        <button onClick={insertSample} className="btn-secondary flex items-center gap-2">
+        <button onClick={insertSample} className="btn-secondary flex items-center gap-2 text-sm">
           <i className="fas fa-code"></i> Insert Sample
         </button>
-        <button onClick={clearCode} className="btn-secondary flex items-center gap-2">
+        <button onClick={clearCode} className="btn-secondary flex items-center gap-2 text-sm">
           <i className="fas fa-trash"></i> Clear Code
         </button>
       </div>
 
-      {/* Code Editors */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-        <div>
-          <label className="text-sm font-semibold mb-2 block flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}>
+      {/* Code Editors — stacks on mobile, 3-col on lg */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
+        <div className="min-w-0">
+          <label className="text-xs sm:text-sm font-semibold mb-2 block flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}>
             <i className="fab fa-html5 text-orange-500"></i> HTML
           </label>
           <textarea
@@ -75,8 +75,8 @@ export default function CodeRunner() {
             placeholder="<!-- Write HTML here -->"
           />
         </div>
-        <div>
-          <label className="text-sm font-semibold mb-2 block flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}>
+        <div className="min-w-0">
+          <label className="text-xs sm:text-sm font-semibold mb-2 block flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}>
             <i className="fab fa-css3-alt text-blue-500"></i> CSS
           </label>
           <textarea
@@ -87,8 +87,8 @@ export default function CodeRunner() {
             placeholder="/* Write CSS here */"
           />
         </div>
-        <div>
-          <label className="text-sm font-semibold mb-2 block flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}>
+        <div className="min-w-0">
+          <label className="text-xs sm:text-sm font-semibold mb-2 block flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}>
             <i className="fab fa-js-square text-yellow-500"></i> JavaScript
           </label>
           <textarea
@@ -103,7 +103,7 @@ export default function CodeRunner() {
 
       {/* Preview */}
       <div>
-        <label className="text-sm font-semibold mb-2 block" style={{ color: 'var(--text-secondary)' }}>
+        <label className="text-xs sm:text-sm font-semibold mb-2 block" style={{ color: 'var(--text-secondary)' }}>
           <i className="fas fa-eye mr-1"></i> Live Preview
         </label>
         <div className="border rounded-lg overflow-hidden" style={{ borderColor: 'var(--border-color)' }}>
@@ -111,7 +111,7 @@ export default function CodeRunner() {
             ref={iframeRef}
             sandbox="allow-scripts allow-modals"
             className="w-full bg-white"
-            style={{ height: '400px', border: 'none' }}
+            style={{ height: '300px', border: 'none' }}
             title="Code Preview"
           />
         </div>

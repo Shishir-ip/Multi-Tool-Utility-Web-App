@@ -98,22 +98,22 @@ export default function Timer() {
 
   return (
     <div
-      className={`flex flex-col items-center justify-center min-h-[80vh] ${isFullscreen ? 'fullscreen-mode' : ''}`}
+      className={`flex flex-col items-center justify-center min-h-[80vh] px-4 ${isFullscreen ? 'fullscreen-mode' : ''}`}
       style={{ background: '#000000' }}
     >
       <div className="absolute top-4 right-4 z-10">
         <button
           onClick={toggleFullscreen}
-          className="px-4 py-2 rounded-lg text-sm font-medium"
+          className="px-3 py-2 sm:px-4 sm:py-2 rounded-lg text-xs sm:text-sm font-medium"
           style={{ background: '#1a1a1a', color: '#ffffff', border: '1px solid #333' }}
         >
           <i className={`fas ${isFullscreen ? 'fa-compress' : 'fa-expand'}`}></i>
         </button>
       </div>
 
-      {/* Progress Ring + Time */}
-      <div className="relative mb-8">
-        <svg width="320" height="320" className="progress-ring">
+      {/* Progress Ring + Time — responsive SVG */}
+      <div className="relative mb-6 sm:mb-8 w-full flex items-center justify-center">
+        <svg width="280" height="280" viewBox="0 0 320 320" className="progress-ring max-w-full" style={{ maxWidth: '280px' }}>
           <circle
             cx="160" cy="160" r="140"
             fill="none"
@@ -133,10 +133,11 @@ export default function Timer() {
         </svg>
         <div className="absolute inset-0 flex items-center justify-center">
           <div
-            className="font-mono font-bold"
+            className="font-mono font-bold text-center px-2"
             style={{
-              fontSize: isFullscreen ? '8vw' : 'clamp(2.5rem, 6vw, 4rem)',
-              color: remaining === 0 && totalDuration > 0 && !running ? '#ef4444' : '#ffffff'
+              fontSize: isFullscreen ? 'min(8vw, 4rem)' : 'clamp(1.8rem, 5vw, 3.5rem)',
+              color: remaining === 0 && totalDuration > 0 && !running ? '#ef4444' : '#ffffff',
+              wordBreak: 'keep-all'
             }}
           >
             {displayHours.toString().padStart(2, '0')}:
@@ -146,73 +147,73 @@ export default function Timer() {
         </div>
       </div>
 
-      {/* Input Controls (only when not running) */}
+      {/* Input Controls — responsive */}
       {!running && remaining === 0 && (
-        <div className="flex gap-4 mb-8">
+        <div className="flex gap-2 sm:gap-4 mb-6 sm:mb-8">
           <div className="text-center">
-            <label className="text-xs block mb-1" style={{ color: '#888' }}>Hours</label>
+            <label className="text-[10px] sm:text-xs block mb-1" style={{ color: '#888' }}>Hours</label>
             <input
               type="number"
               min="0"
               max="23"
               value={hours}
               onChange={e => setHours(Math.max(0, parseInt(e.target.value) || 0))}
-              className="w-20 text-center py-3 rounded-lg font-mono text-xl"
+              className="w-16 sm:w-20 text-center py-2 sm:py-3 rounded-lg font-mono text-base sm:text-xl"
               style={{ background: '#1a1a1a', color: '#fff', border: '1px solid #333' }}
             />
           </div>
           <div className="text-center">
-            <label className="text-xs block mb-1" style={{ color: '#888' }}>Minutes</label>
+            <label className="text-[10px] sm:text-xs block mb-1" style={{ color: '#888' }}>Minutes</label>
             <input
               type="number"
               min="0"
               max="59"
               value={minutes}
               onChange={e => setMinutes(Math.max(0, parseInt(e.target.value) || 0))}
-              className="w-20 text-center py-3 rounded-lg font-mono text-xl"
+              className="w-16 sm:w-20 text-center py-2 sm:py-3 rounded-lg font-mono text-base sm:text-xl"
               style={{ background: '#1a1a1a', color: '#fff', border: '1px solid #333' }}
             />
           </div>
           <div className="text-center">
-            <label className="text-xs block mb-1" style={{ color: '#888' }}>Seconds</label>
+            <label className="text-[10px] sm:text-xs block mb-1" style={{ color: '#888' }}>Seconds</label>
             <input
               type="number"
               min="0"
               max="59"
               value={seconds}
               onChange={e => setSeconds(Math.max(0, parseInt(e.target.value) || 0))}
-              className="w-20 text-center py-3 rounded-lg font-mono text-xl"
+              className="w-16 sm:w-20 text-center py-2 sm:py-3 rounded-lg font-mono text-base sm:text-xl"
               style={{ background: '#1a1a1a', color: '#fff', border: '1px solid #333' }}
             />
           </div>
         </div>
       )}
 
-      {/* Controls */}
-      <div className="flex gap-4">
+      {/* Controls — wraps on mobile */}
+      <div className="flex flex-wrap justify-center gap-2 sm:gap-4">
         {!running ? (
           <button
             onClick={start}
-            className="px-8 py-3 rounded-xl font-semibold text-lg transition-all hover:scale-105"
+            className="px-5 sm:px-8 py-2.5 sm:py-3 rounded-xl font-semibold text-sm sm:text-lg transition-all hover:scale-105"
             style={{ background: '#10b981', color: '#ffffff' }}
           >
-            <i className="fas fa-play mr-2"></i> {remaining > 0 ? 'Resume' : 'Start'}
+            <i className="fas fa-play mr-1 sm:mr-2"></i> {remaining > 0 ? 'Resume' : 'Start'}
           </button>
         ) : (
           <button
             onClick={pause}
-            className="px-8 py-3 rounded-xl font-semibold text-lg transition-all hover:scale-105"
+            className="px-5 sm:px-8 py-2.5 sm:py-3 rounded-xl font-semibold text-sm sm:text-lg transition-all hover:scale-105"
             style={{ background: '#f59e0b', color: '#ffffff' }}
           >
-            <i className="fas fa-pause mr-2"></i> Pause
+            <i className="fas fa-pause mr-1 sm:mr-2"></i> Pause
           </button>
         )}
         <button
           onClick={reset}
-          className="px-8 py-3 rounded-xl font-semibold text-lg transition-all hover:scale-105"
+          className="px-5 sm:px-8 py-2.5 sm:py-3 rounded-xl font-semibold text-sm sm:text-lg transition-all hover:scale-105"
           style={{ background: '#333333', color: '#ffffff', border: '1px solid #555' }}
         >
-          <i className="fas fa-redo mr-2"></i> Reset
+          <i className="fas fa-redo mr-1 sm:mr-2"></i> Reset
         </button>
       </div>
     </div>

@@ -130,23 +130,25 @@ export default function AnalogClock() {
 
   return (
     <div
-      className={`flex flex-col items-center justify-center min-h-[80vh] ${isFullscreen ? 'fullscreen-mode' : ''}`}
+      className={`flex flex-col items-center justify-center min-h-[80vh] px-4 ${isFullscreen ? 'fullscreen-mode' : ''}`}
       style={{ background: '#000000' }}
     >
-      <div className="absolute top-4 right-4 z-10">
+      <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-10">
         <button
           onClick={toggleFullscreen}
-          className="px-4 py-2 rounded-lg text-sm font-medium"
+          className="px-3 py-2 sm:px-4 sm:py-2 rounded-lg text-xs sm:text-sm font-medium"
           style={{ background: '#1a1a1a', color: '#ffffff', border: '1px solid #333' }}
         >
           <i className={`fas ${isFullscreen ? 'fa-compress' : 'fa-expand'}`}></i>
         </button>
       </div>
 
-      <canvas ref={canvasRef} className="max-w-full" style={{ maxWidth: '400px', maxHeight: '400px' }} />
+      <div className="w-full flex items-center justify-center" style={{ maxWidth: '400px' }}>
+        <canvas ref={canvasRef} className="max-w-full" style={{ maxHeight: '400px' }} />
+      </div>
 
-      <div className="mt-6 text-center">
-        <p style={{ color: '#888888', fontSize: '1.2rem', fontFamily: 'monospace' }}>
+      <div className="mt-4 sm:mt-6 text-center px-2">
+        <p style={{ color: '#888888', fontSize: 'clamp(0.9rem, 2vw, 1.2rem)', fontFamily: 'monospace' }}>
           {time.toLocaleTimeString()}
         </p>
       </div>

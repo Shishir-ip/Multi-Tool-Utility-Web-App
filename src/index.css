@@ -14,11 +14,13 @@
 
 html {
   scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   transition: background-color var(--transition-speed), color var(--transition-speed);
+  overflow-x: hidden;
 }
 
 /* Light Theme */
@@ -94,6 +96,7 @@ body {
 .sidebar {
   width: var(--sidebar-width);
   height: 100vh;
+  height: 100dvh;
   position: fixed;
   left: 0;
   top: 0;
@@ -102,6 +105,7 @@ body {
   transition: transform var(--transition-speed) ease, background-color var(--transition-speed);
   z-index: 40;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .sidebar.collapsed {
@@ -123,9 +127,13 @@ body {
   right: 0;
   background: var(--header-bg);
   backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border-color);
   z-index: 30;
   transition: left var(--transition-speed), background-color var(--transition-speed);
+  display: flex;
+  align-items: center;
+  min-width: 0;
 }
 
 .sidebar.collapsed ~ .app-header {
@@ -137,8 +145,15 @@ body {
   margin-left: var(--sidebar-width);
   margin-top: var(--header-height);
   min-height: calc(100vh - var(--header-height));
-  padding: 24px;
+  min-height: calc(100dvh - var(--header-height));
+  padding: 16px;
   transition: margin-left var(--transition-speed);
+}
+
+@media (min-width: 640px) {
+  .main-content {
+    padding: 24px;
+  }
 }
 
 .sidebar.collapsed ~ .main-content {
@@ -150,10 +165,16 @@ body {
   background: var(--card-bg);
   border: 1px solid var(--border-color);
   border-radius: 12px;
-  padding: 24px;
+  padding: 16px;
   box-shadow: var(--card-shadow);
   transition: all var(--transition-speed) ease;
   cursor: pointer;
+}
+
+@media (min-width: 640px) {
+  .tool-card {
+    padding: 24px;
+  }
 }
 
 .tool-card:hover {
@@ -162,16 +183,34 @@ body {
   border-color: var(--accent);
 }
 
-/* Buttons */
+.tool-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Buttons — responsive base */
 .btn-primary {
   background: var(--accent);
   color: white;
-  padding: 10px 20px;
+  padding: 10px 16px;
   border-radius: 8px;
   font-weight: 600;
+  font-size: 14px;
   transition: all 0.2s;
   border: none;
   cursor: pointer;
+  white-space: nowrap;
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (min-width: 640px) {
+  .btn-primary {
+    padding: 10px 20px;
+    font-size: 15px;
+  }
 }
 
 .btn-primary:hover {
@@ -179,38 +218,77 @@ body {
   transform: translateY(-1px);
 }
 
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
 .btn-secondary {
   background: var(--bg-tertiary);
   color: var(--text-primary);
-  padding: 10px 20px;
+  padding: 10px 16px;
   border-radius: 8px;
   font-weight: 500;
+  font-size: 14px;
   border: 1px solid var(--border-color);
   cursor: pointer;
   transition: all 0.2s;
+  white-space: nowrap;
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (min-width: 640px) {
+  .btn-secondary {
+    padding: 10px 20px;
+    font-size: 15px;
+  }
 }
 
 .btn-secondary:hover {
   background: var(--border-color);
 }
 
-/* Tool Container */
+/* Tool Container — responsive padding */
 .tool-container {
   background: var(--card-bg);
   border: 1px solid var(--border-color);
   border-radius: 16px;
-  padding: 32px;
+  padding: 16px;
   box-shadow: var(--card-shadow);
+  overflow: hidden;
+  max-width: 100%;
 }
 
-/* Drop Zone */
+@media (min-width: 640px) {
+  .tool-container {
+    padding: 24px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .tool-container {
+    padding: 32px;
+  }
+}
+
+/* Drop Zone — responsive padding */
 .drop-zone {
   border: 2px dashed var(--border-color);
   border-radius: 12px;
-  padding: 48px;
+  padding: 24px 16px;
   text-align: center;
   transition: all 0.2s;
   cursor: pointer;
+}
+
+@media (min-width: 640px) {
+  .drop-zone {
+    padding: 48px 32px;
+  }
 }
 
 .drop-zone:hover, .drop-zone.active {
@@ -218,7 +296,7 @@ body {
   background: color-mix(in srgb, var(--accent) 5%, transparent);
 }
 
-/* Inputs */
+/* Inputs — responsive */
 .input-field {
   background: var(--bg-tertiary);
   border: 1px solid var(--border-color);
@@ -228,6 +306,8 @@ body {
   font-size: 14px;
   transition: border-color 0.2s;
   width: 100%;
+  min-height: 40px;
+  max-width: 100%;
 }
 
 .input-field:focus {
@@ -247,6 +327,7 @@ body {
   margin: 0 !important;
   width: 100vw !important;
   height: 100vh !important;
+  height: 100dvh !important;
 }
 
 /* Progress Ring */
@@ -277,7 +358,7 @@ body {
 /* Code Editor */
 .code-editor {
   font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
-  font-size: 13px;
+  font-size: 12px;
   line-height: 1.6;
   tab-size: 2;
   resize: none;
@@ -285,9 +366,18 @@ body {
   color: var(--text-primary);
   border: 1px solid var(--border-color);
   border-radius: 8px;
-  padding: 16px;
+  padding: 12px;
   width: 100%;
-  min-height: 150px;
+  min-height: 120px;
+  max-width: 100%;
+}
+
+@media (min-width: 640px) {
+  .code-editor {
+    font-size: 13px;
+    padding: 16px;
+    min-height: 150px;
+  }
 }
 
 .code-editor:focus {
@@ -300,8 +390,14 @@ body {
   background: var(--bg-tertiary);
   border: 1px solid var(--border-color);
   border-radius: 10px;
-  padding: 16px;
+  padding: 12px 8px;
   text-align: center;
+}
+
+@media (min-width: 640px) {
+  .stat-card {
+    padding: 16px;
+  }
 }
 
 /* Mobile Responsive */
@@ -320,6 +416,23 @@ body {
   }
 }
 
+/* Small mobile fixes */
+@media (max-width: 480px) {
+  .tool-container h2 {
+    font-size: 1.2rem;
+  }
+
+  /* Ensure button groups wrap on very small screens */
+  .btn-group-mobile {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .btn-group-mobile > * {
+    width: 100%;
+  }
+}
+
 /* Mobile overlay */
 .sidebar-overlay {
   position: fixed;
@@ -334,4 +447,34 @@ body {
 .sidebar-overlay.active {
   opacity: 1;
   pointer-events: auto;
+}
+
+/* Utility: responsive flex wrap for all button/action groups */
+.flex-responsive {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+@media (max-width: 640px) {
+  .flex-responsive {
+    gap: 6px;
+  }
+  .flex-responsive > * {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+}
+
+/* Prevent canvas/image overflow */
+canvas, img, video, iframe {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Ensure scrollable containers don't break layout */
+.overflow-auto-safe {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
 }
