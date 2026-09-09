@@ -7,87 +7,92 @@ export interface Tool {
   keywords: string[];
 }
 
-export const TOOLS: Tool[] = [
-  {
-    id: 'photo-to-pdf',
-    name: 'Photo to PDF',
-    category: 'Photo & PDF',
-    description: 'Convert images to PDF documents with orientation controls',
-    icon: 'fa-file-pdf',
-    keywords: ['photo', 'pdf', 'image', 'convert', 'document']
-  },
-  {
-    id: 'image-resizer',
-    name: 'Image Resizer',
-    category: 'Photo & PDF',
-    description: 'Resize images with aspect ratio lock and live preview',
-    icon: 'fa-expand',
-    keywords: ['image', 'resize', 'scale', 'dimensions', 'pixels']
-  },
-  {
-    id: 'pdf-editor',
-    name: 'Mini PDF Editor',
-    category: 'Photo & PDF',
-    description: 'Add text and drawings to existing PDF documents',
-    icon: 'fa-edit',
-    keywords: ['pdf', 'edit', 'text', 'draw', 'annotate']
-  },
-  {
-    id: 'code-runner',
-    name: 'Live Code Runner',
-    category: 'Developer Tools',
-    description: 'Write and run HTML, CSS, and JavaScript in real-time',
-    icon: 'fa-code',
-    keywords: ['code', 'html', 'css', 'javascript', 'run', 'editor']
-  },
-  {
-    id: 'digital-clock',
-    name: 'Digital Clock',
-    category: 'Time & Focus',
-    description: 'Full-screen digital clock with customizable display',
-    icon: 'fa-clock',
-    keywords: ['clock', 'digital', 'time', 'display', 'fullscreen']
-  },
-  {
-    id: 'analog-clock',
-    name: 'Analog Clock',
-    category: 'Time & Focus',
-    description: 'Smooth analog clock with hour, minute, and second hands',
-    icon: 'fa-stopwatch',
-    keywords: ['clock', 'analog', 'time', 'watch', 'hands']
-  },
-  {
-    id: 'stopwatch',
-    name: 'Stopwatch',
-    category: 'Time & Focus',
-    description: 'High-precision stopwatch with lap tracking',
-    icon: 'fa-hourglass-half',
-    keywords: ['stopwatch', 'timer', 'lap', 'split', 'precision']
-  },
-  {
-    id: 'timer',
-    name: 'Countdown Timer',
-    category: 'Time & Focus',
-    description: 'Countdown timer with progress ring and audio alert',
-    icon: 'fa-hourglass-end',
-    keywords: ['timer', 'countdown', 'alarm', 'alert', 'progress']
-  },
-  {
-    id: 'word-counter',
-    name: 'Word Counter',
-    category: 'Student & Writing',
-    description: 'Count words, characters, and estimate reading time',
-    icon: 'fa-font',
-    keywords: ['word', 'count', 'character', 'reading', 'writing', 'text']
-  },
-  {
-    id: 'qr-generator',
-    name: 'QR Code Generator',
-    category: 'General Utilities',
-    description: 'Generate customizable QR codes from text or URLs',
-    icon: 'fa-qrcode',
-    keywords: ['qr', 'code', 'generate', 'barcode', 'scan']
-  }
+export interface Category {
+  id: string;
+  name: string;
+  icon: string;
+  color: string;
+}
+
+export const CATEGORIES: Category[] = [
+  { id: 'pdf-document', name: 'PDF & Document Tools', icon: 'fa-file-pdf', color: '#ef4444' },
+  { id: 'image-design', name: 'Image & Design Suite', icon: 'fa-palette', color: '#8b5cf6' },
+  { id: 'developer', name: 'Developer & Coding', icon: 'fa-laptop-code', color: '#10b981' },
+  { id: 'student', name: 'Student & Academic', icon: 'fa-graduation-cap', color: '#f59e0b' },
+  { id: 'finance', name: 'Finance & Business', icon: 'fa-coins', color: '#06b6d4' },
+  { id: 'time', name: 'Time & Productivity', icon: 'fa-clock', color: '#ec4899' },
+  { id: 'calculators', name: 'Calculators & Converters', icon: 'fa-calculator', color: '#3b82f6' },
+  { id: 'security', name: 'Security & Utilities', icon: 'fa-shield-halved', color: '#6366f1' },
 ];
 
-export const CATEGORIES = [...new Set(TOOLS.map(t => t.category))];
+export const TOOLS: Tool[] = [
+  // ── PDF & Document Tools ──
+  { id: 'photo-to-pdf', name: 'Photo to PDF', category: 'PDF & Document Tools', description: 'Convert images to PDF documents', icon: 'fa-image', keywords: ['photo','pdf','convert','image'] },
+  { id: 'pdf-to-image', name: 'PDF to Image', category: 'PDF & Document Tools', description: 'Extract pages from PDF as images', icon: 'fa-file-image', keywords: ['pdf','image','extract','convert'] },
+  { id: 'pdf-merger', name: 'PDF Merger', category: 'PDF & Document Tools', description: 'Merge multiple PDFs into one', icon: 'fa-object-group', keywords: ['pdf','merge','combine','join'] },
+  { id: 'pdf-compressor', name: 'PDF Compressor', category: 'PDF & Document Tools', description: 'Reduce PDF file size', icon: 'fa-compress', keywords: ['pdf','compress','reduce','size'] },
+  { id: 'pdf-extractor', name: 'PDF Page Extractor', category: 'PDF & Document Tools', description: 'Extract specific pages from PDF', icon: 'fa-scissors', keywords: ['pdf','extract','pages','split'] },
+  { id: 'pdf-reorderer', name: 'PDF Page Reorderer', category: 'PDF & Document Tools', description: 'Rearrange pages in a PDF', icon: 'fa-arrows-alt', keywords: ['pdf','reorder','rearrange','pages'] },
+
+  // ── Image & Design Suite ──
+  { id: 'image-resizer', name: 'Image Resizer', category: 'Image & Design Suite', description: 'Resize images with aspect ratio lock', icon: 'fa-expand', keywords: ['image','resize','scale','dimensions'] },
+  { id: 'image-converter', name: 'Image Converter', category: 'Image & Design Suite', description: 'Convert between JPG, PNG, WEBP', icon: 'fa-exchange-alt', keywords: ['image','convert','jpg','png','webp'] },
+  { id: 'image-cropper', name: 'Advanced Image Cropper', category: 'Image & Design Suite', description: 'Freehand, circle, square, ratio cropping', icon: 'fa-crop-alt', keywords: ['image','crop','freehand','circle','square'] },
+  { id: 'exif-viewer', name: 'EXIF/Metadata Viewer', category: 'Image & Design Suite', description: 'View image metadata and EXIF data', icon: 'fa-info-circle', keywords: ['exif','metadata','image','info'] },
+  { id: 'collage-maker', name: 'Photo Collage Maker', category: 'Image & Design Suite', description: 'Create photo collages from images', icon: 'fa-th', keywords: ['collage','photo','grid','layout'] },
+  { id: 'favicon-generator', name: 'Favicon Generator', category: 'Image & Design Suite', description: 'Generate favicons from images or text', icon: 'fa-star', keywords: ['favicon','icon','generate','website'] },
+
+  // ── Developer & Coding ──
+  { id: 'code-runner', name: 'HTML/CSS/JS Runner', category: 'Developer & Coding', description: 'Write and run code in real-time', icon: 'fa-code', keywords: ['code','html','css','javascript','run'] },
+  { id: 'color-picker', name: 'Color Picker', category: 'Developer & Coding', description: 'Pick colors in HEX, RGB, HSL', icon: 'fa-eye-dropper', keywords: ['color','hex','rgb','hsl','picker'] },
+
+  // ── Student & Academic ──
+  { id: 'word-counter', name: 'Word Counter', category: 'Student & Academic', description: 'Count words, characters, reading time', icon: 'fa-font', keywords: ['word','count','character','reading'] },
+  { id: 'gpa-calculator', name: 'GPA/CGPA Calculator', category: 'Student & Academic', description: 'Calculate GPA and CGPA', icon: 'fa-chart-line', keywords: ['gpa','cgpa','grade','calculator'] },
+  { id: 'marks-calculator', name: 'Exam Marks Calculator', category: 'Student & Academic', description: 'Calculate exam marks and percentages', icon: 'fa-clipboard-check', keywords: ['marks','exam','percentage','score'] },
+  { id: 'attendance-calculator', name: 'Attendance Calculator', category: 'Student & Academic', description: 'Track and calculate attendance', icon: 'fa-calendar-check', keywords: ['attendance','tracker','percentage','target'] },
+  { id: 'citation-generator', name: 'Citation Generator', category: 'Student & Academic', description: 'Generate APA/MLA/Chicago citations', icon: 'fa-quote-left', keywords: ['citation','apa','mla','chicago','reference'] },
+  { id: 'matrix-calculator', name: 'Matrix Calculator', category: 'Student & Academic', description: 'Matrix operations: add, multiply, determinant', icon: 'fa-th', keywords: ['matrix','determinant','multiply','add'] },
+
+  // ── Finance & Business ──
+  { id: 'discount-calculator', name: 'Discount Calculator', category: 'Finance & Business', description: 'Calculate discounts and savings', icon: 'fa-percent', keywords: ['discount','sale','price','savings'] },
+  { id: 'loan-calculator', name: 'Loan/EMI Calculator', category: 'Finance & Business', description: 'Calculate EMI and loan payments', icon: 'fa-money-bill-wave', keywords: ['loan','emi','interest','payment'] },
+  { id: 'bkash-calculator', name: 'bKash/Nagad Cash-Out Calculator', category: 'Finance & Business', description: 'Calculate mobile banking fees', icon: 'fa-mobile-alt', keywords: ['bkash','nagad','cashout','fee','mobile'] },
+
+  // ── Time & Productivity ──
+  { id: 'digital-clock', name: 'Big Digital Clock', category: 'Time & Productivity', description: 'Full-screen digital clock', icon: 'fa-clock', keywords: ['clock','digital','time','display'] },
+  { id: 'analog-clock', name: 'Big Analog Clock', category: 'Time & Productivity', description: 'Smooth analog clock face', icon: 'fa-stopwatch', keywords: ['clock','analog','time','watch'] },
+  { id: 'stopwatch', name: 'Stopwatch', category: 'Time & Productivity', description: 'High-precision stopwatch with laps', icon: 'fa-hourglass-half', keywords: ['stopwatch','timer','lap','split'] },
+  { id: 'timer', name: 'Countdown Timer', category: 'Time & Productivity', description: 'Countdown with progress ring', icon: 'fa-hourglass-end', keywords: ['timer','countdown','alarm'] },
+  { id: 'pomodoro', name: 'Pomodoro Timer', category: 'Time & Productivity', description: 'Focus timer with work/break cycles', icon: 'fa-tomato', keywords: ['pomodoro','focus','work','break','productivity'] },
+  { id: 'timezone-converter', name: 'Time Zone Converter', category: 'Time & Productivity', description: 'Convert time between zones', icon: 'fa-globe', keywords: ['timezone','convert','utc','gmt'] },
+  { id: 'date-calculator', name: 'Date Calculator', category: 'Time & Productivity', description: 'Add/subtract days from a date', icon: 'fa-calendar-plus', keywords: ['date','add','subtract','days'] },
+  { id: 'business-days', name: 'Business Days Calculator', category: 'Time & Productivity', description: 'Count business days between dates', icon: 'fa-briefcase', keywords: ['business','days','workdays','weekday'] },
+  { id: 'days-between', name: 'Days Between Calculator', category: 'Time & Productivity', description: 'Count days between two dates', icon: 'fa-calendar-minus', keywords: ['days','between','difference','dates'] },
+  { id: 'calendar-generator', name: 'Calendar Generator', category: 'Time & Productivity', description: 'Generate printable calendars', icon: 'fa-calendar-alt', keywords: ['calendar','generate','print','monthly'] },
+
+  // ── Calculators & Converters ──
+  { id: 'bmi-calculator', name: 'BMI Calculator', category: 'Calculators & Converters', description: 'Calculate Body Mass Index', icon: 'fa-weight', keywords: ['bmi','body','mass','health','weight'] },
+  { id: 'age-calculator', name: 'Age Calculator', category: 'Calculators & Converters', description: 'Calculate exact age from birthdate', icon: 'fa-birthday-cake', keywords: ['age','birthday','years','calculator'] },
+  { id: 'unit-converter', name: 'General Unit Converter', category: 'Calculators & Converters', description: 'Convert length, weight, temperature', icon: 'fa-balance-scale', keywords: ['unit','convert','length','weight','temperature'] },
+  { id: 'storage-converter', name: 'Data Storage Converter', category: 'Calculators & Converters', description: 'Convert KB, MB, GB, TB', icon: 'fa-hdd', keywords: ['storage','data','kb','mb','gb','tb'] },
+  { id: 'speed-converter', name: 'Speed Converter', category: 'Calculators & Converters', description: 'Convert Mbps to MB/s and more', icon: 'fa-tachometer-alt', keywords: ['speed','mbps','mbs','bandwidth'] },
+
+  // ── Security & Utilities ──
+  { id: 'qr-generator', name: 'QR Code Generator', category: 'Security & Utilities', description: 'Generate customizable QR codes', icon: 'fa-qrcode', keywords: ['qr','code','generate','barcode'] },
+  { id: 'wifi-qr', name: 'Wi-Fi QR Generator', category: 'Security & Utilities', description: 'Generate Wi-Fi QR codes', icon: 'fa-wifi', keywords: ['wifi','qr','network','password'] },
+  { id: 'password-generator', name: 'Strong Password Generator', category: 'Security & Utilities', description: 'Generate secure passwords', icon: 'fa-key', keywords: ['password','generate','secure','strong'] },
+  { id: 'password-checker', name: 'Password Strength Checker', category: 'Security & Utilities', description: 'Check password strength', icon: 'fa-shield-alt', keywords: ['password','strength','check','security'] },
+  { id: 'bulk-renamer', name: 'Bulk File Renamer', category: 'Security & Utilities', description: 'Rename multiple files at once', icon: 'fa-edit', keywords: ['bulk','rename','files','batch'] },
+  { id: 'extension-changer', name: 'File Extension Changer', category: 'Security & Utilities', description: 'Change file extensions in bulk', icon: 'fa-file-signature', keywords: ['extension','change','file','rename'] },
+  { id: 'random-number', name: 'Random Number Generator', category: 'Security & Utilities', description: 'Generate random numbers', icon: 'fa-dice', keywords: ['random','number','generate'] },
+  { id: 'random-choice', name: 'Random Choice Picker', category: 'Security & Utilities', description: 'Pick random items from a list', icon: 'fa-list', keywords: ['random','choice','pick','list'] },
+  { id: 'dice-roller', name: 'Dice Roller', category: 'Security & Utilities', description: 'Roll virtual dice', icon: 'fa-dice-d6', keywords: ['dice','roll','random','game'] },
+  { id: 'coin-flip', name: 'Coin Flip', category: 'Security & Utilities', description: 'Flip a virtual coin', icon: 'fa-coins', keywords: ['coin','flip','heads','tails','random'] },
+];
+
+export const CATEGORY_MAP: Record<string, Category> = Object.fromEntries(
+  CATEGORIES.map(c => [c.name, c])
+);
+
+export const TIME_FOCUS_IDS = ['digital-clock', 'analog-clock', 'stopwatch', 'timer', 'pomodoro'];
