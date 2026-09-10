@@ -89,6 +89,27 @@ export const TOOLS: Tool[] = [
   { id: 'random-choice', name: 'Random Choice Picker', category: 'Security & Utilities', description: 'Pick random items from a list', icon: 'fa-list', keywords: ['random','choice','pick','list'] },
   { id: 'dice-roller', name: 'Dice Roller', category: 'Security & Utilities', description: 'Roll virtual dice', icon: 'fa-dice-d6', keywords: ['dice','roll','random','game'] },
   { id: 'coin-flip', name: 'Coin Flip', category: 'Security & Utilities', description: 'Flip a virtual coin', icon: 'fa-coins', keywords: ['coin','flip','heads','tails','random'] },
+
+  // ── Image & Media Tools (NEW) ──
+  { id: 'meme-generator', name: 'Meme Generator', category: 'Image & Design Suite', description: 'Create memes with custom text', icon: 'fa-face-laugh', keywords: ['meme','text','image','funny','caption'] },
+  { id: 'batch-watermarker', name: 'Batch Photo Watermarker', category: 'Image & Design Suite', description: 'Add watermarks to multiple images', icon: 'fa-stamp', keywords: ['watermark','batch','logo','text','protect'] },
+  { id: 'target-compressor', name: 'Target File Size Compressor', category: 'Image & Design Suite', description: 'Compress images to target file size', icon: 'fa-bullseye', keywords: ['compress','target','size','kb','mb','optimize'] },
+  { id: 'image-anonymizer', name: 'Image Anonymizer', category: 'Image & Design Suite', description: 'Blur or pixelate sensitive areas', icon: 'fa-user-secret', keywords: ['blur','pixelate','anonymize','face','privacy'] },
+
+  // ── Audio & Hardware Tools (NEW) ──
+  { id: 'audio-trimmer', name: 'Audio Trimmer', category: 'Developer & Coding', description: 'Trim and cut audio files', icon: 'fa-scissors', keywords: ['audio','trim','cut','mp3','wav','edit'] },
+  { id: 'webcam-mic-inspector', name: 'Webcam & Mic Inspector', category: 'Developer & Coding', description: 'Test camera and microphone', icon: 'fa-video', keywords: ['webcam','camera','microphone','mic','test','device'] },
+  { id: 'keyboard-tester', name: 'Keyboard Tester', category: 'Developer & Coding', description: 'Test keyboard keys and rollover', icon: 'fa-keyboard', keywords: ['keyboard','test','key','rollover','nkro'] },
+
+  // ── Security & Privacy (NEW) ──
+  { id: 'aes-cipher', name: 'AES Encrypter/Decrypter', category: 'Security & Utilities', description: 'Encrypt text and files with AES-256', icon: 'fa-lock', keywords: ['aes','encrypt','decrypt','cipher','security','password'] },
+  { id: 'steganography', name: 'Image Steganography', category: 'Security & Utilities', description: 'Hide text inside images', icon: 'fa-eye-slash', keywords: ['steganography','hide','secret','image','message','lsb'] },
+
+  // ── Practical Calculators & Analysis (NEW) ──
+  { id: 'unit-price-compare', name: 'Unit Price Compare', category: 'Calculators & Converters', description: 'Compare best value per unit', icon: 'fa-tags', keywords: ['unit','price','compare','value','best','cheap'] },
+  { id: 'aspect-ratio-calc', name: 'Aspect Ratio Calculator', category: 'Calculators & Converters', description: 'Calculate screen dimensions', icon: 'fa-desktop', keywords: ['aspect','ratio','screen','resolution','width','height'] },
+  { id: 'readability-analyzer', name: 'Readability Analyzer', category: 'Student & Academic', description: 'Analyze text readability scores', icon: 'fa-book-open', keywords: ['readability','flesch','grade','level','analyze','text'] },
+  { id: 'paper-generator', name: 'Printable Paper Generator', category: 'Student & Academic', description: 'Generate lined, grid, or dot paper', icon: 'fa-file-lines', keywords: ['paper','print','lined','grid','dot','notebook'] },
 ];
 
 export const CATEGORY_MAP: Record<string, Category> = Object.fromEntries(
