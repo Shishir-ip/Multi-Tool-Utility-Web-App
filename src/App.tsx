@@ -52,6 +52,27 @@ const ToolModules: Record<string, React.LazyExoticComponent<React.FC>> = {
   'random-choice': lazy(() => import('./tools/SecurityTools').then(m => ({ default: m.RandomChoice }))),
   'dice-roller': lazy(() => import('./tools/SecurityTools').then(m => ({ default: m.DiceRoller }))),
   'coin-flip': lazy(() => import('./tools/SecurityTools').then(m => ({ default: m.CoinFlip }))),
+
+  // ── NEW: Image & Media Tools ──
+  'meme-generator': lazy(() => import('./tools/ImageMediaTools').then(m => ({ default: m.MemeGenerator }))),
+  'batch-watermarker': lazy(() => import('./tools/ImageMediaTools').then(m => ({ default: m.BatchWatermarker }))),
+  'target-compressor': lazy(() => import('./tools/ImageMediaTools').then(m => ({ default: m.TargetCompressor }))),
+  'image-anonymizer': lazy(() => import('./tools/ImageMediaTools').then(m => ({ default: m.ImageAnonymizer }))),
+
+  // ── NEW: Audio & Hardware Tools ──
+  'audio-trimmer': lazy(() => import('./tools/AudioHardwareTools').then(m => ({ default: m.AudioTrimmer }))),
+  'webcam-mic-inspector': lazy(() => import('./tools/AudioHardwareTools').then(m => ({ default: m.WebcamMicInspector }))),
+  'keyboard-tester': lazy(() => import('./tools/AudioHardwareTools').then(m => ({ default: m.KeyboardTester }))),
+
+  // ── NEW: Security & Privacy ──
+  'aes-cipher': lazy(() => import('./tools/SecurityPrivacyTools').then(m => ({ default: m.AesCipher }))),
+  'steganography': lazy(() => import('./tools/SecurityPrivacyTools').then(m => ({ default: m.Steganography }))),
+
+  // ── NEW: Analysis Tools ──
+  'unit-price-compare': lazy(() => import('./tools/AnalysisTools').then(m => ({ default: m.UnitPriceCompare }))),
+  'aspect-ratio-calc': lazy(() => import('./tools/AnalysisTools').then(m => ({ default: m.AspectRatioCalc }))),
+  'readability-analyzer': lazy(() => import('./tools/AnalysisTools').then(m => ({ default: m.ReadabilityAnalyzer }))),
+  'paper-generator': lazy(() => import('./tools/AnalysisTools').then(m => ({ default: m.PaperGenerator }))),
 };
 
 const VALID_TOOL_IDS = TOOLS.map(t => t.id);
