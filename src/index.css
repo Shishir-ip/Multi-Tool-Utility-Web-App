@@ -343,6 +343,11 @@ body {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent);
 }
 
+/* Search input with icon - override padding to prevent overlap */
+.search-input {
+  padding-left: 40px !important;
+}
+
 /* Fullscreen mode for OLED tools */
 .fullscreen-mode {
   position: fixed !important;
