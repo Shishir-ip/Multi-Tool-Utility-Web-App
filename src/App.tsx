@@ -108,6 +108,10 @@ function App() {
   const [activeCategory, setActiveCategory] = useState<string | null>(initial.category);
   const [searchQuery, setSearchQuery] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    const saved = localStorage.getItem('multitool-sidebar-collapsed');
+    return saved === 'true';
+  });
   const [darkMode, setDarkMode] = useState(() => {
     const saved = localStorage.getItem('multitool-theme');
     return saved ? saved === 'dark' : true;
@@ -140,6 +144,10 @@ function App() {
   useEffect(() => {
     localStorage.setItem('multitool-theme', darkMode ? 'dark' : 'light');
   }, [darkMode]);
+
+  useEffect(() => {
+    localStorage.setItem('multitool-sidebar-collapsed', String(sidebarCollapsed));
+  }, [sidebarCollapsed]);
 
   useEffect(() => {
     document.body.className = darkMode ? 'dark' : 'light';
@@ -197,6 +205,10 @@ function App() {
     setSidebarOpen(false);
   }, []);
 
+  const toggleSidebarCollapse = useCallback(() => {
+    setSidebarCollapsed(prev => !prev);
+  }, []);
+
   const activeToolMeta = TOOLS.find(t => t.id === activeTool);
   const ActiveToolComponent = activeTool ? ToolModules[activeTool] : null;
 
@@ -206,7 +218,7 @@ function App() {
       <div className={`sidebar-overlay lg:hidden ${sidebarOpen ? 'active' : ''}`} onClick={() => setSidebarOpen(false)} />
 
       {/* Sidebar */}
-      <aside className={`sidebar ${sidebarOpen ? 'open' : ''} ${activeTool ? 'collapsed' : ''}`}>
+      <aside className={`sidebar ${sidebarOpen ? 'open' : ''} ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
         <div className="p-4 sm:p-6 border-b" style={{ borderColor: 'var(--border-color)' }}>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-blue-500 flex items-center justify-center flex-shrink-0">
@@ -259,7 +271,8 @@ function App() {
       </aside>
 
       {/* Header */}
-      <header className="app-header flex items-center px-3 sm:px-6 gap-2 sm:gap-4">
+      <header className={`app-header flex items-center px-3 sm:px-6 gap-2 sm:gap-4 ${sidebarCollapsed ? 'header-sidebar-collapsed' : ''}`}>
+        {/* Mobile menu button - only visible on mobile */}
         <button
           className="lg:hidden p-2 rounded-lg flex-shrink-0"
           style={{ color: 'var(--text-primary)' }}
@@ -267,6 +280,17 @@ function App() {
           aria-label="Toggle sidebar"
         >
           <i className="fas fa-bars text-lg"></i>
+        </button>
+
+        {/* Desktop sidebar collapse toggle - only visible on desktop */}
+        <button
+          className="hidden lg:flex p-2 rounded-lg flex-shrink-0 items-center justify-center"
+          style={{ color: 'var(--text-primary)', background: 'var(--bg-tertiary)' }}
+          onClick={toggleSidebarCollapse}
+          aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          <i className={`fas ${sidebarCollapsed ? 'fa-indent' : 'fa-outdent'} text-base`}></i>
         </button>
 
         {!activeTool && (
@@ -307,7 +331,7 @@ function App() {
       </header>
 
       {/* Main Content */}
-      <main className="main-content" style={{ marginLeft: activeTool ? '0' : undefined }}>
+      <main className={`main-content ${sidebarCollapsed ? 'main-sidebar-collapsed' : ''}`}>
         {!activeTool ? (
           <div className="animate-fade-in">
             {/* Hero section */}
