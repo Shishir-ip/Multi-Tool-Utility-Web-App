@@ -301,7 +301,7 @@ function App() {
               placeholder="Search all 49 tools..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="input-field pl-10 text-sm sm:text-base"
+              className="input-field search-input text-sm sm:text-base"
             />
           </div>
         )}
