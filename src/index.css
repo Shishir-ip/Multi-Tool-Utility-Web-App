@@ -108,13 +108,20 @@ body {
   overflow-x: hidden;
 }
 
-.sidebar.collapsed {
-  transform: translateX(-100%);
+/* Mobile: hidden by default, slide in when open */
+@media (max-width: 1023px) {
+  .sidebar {
+    transform: translateX(-100%);
+  }
+  .sidebar.open {
+    transform: translateX(0);
+  }
 }
 
+/* Desktop: always visible, can be collapsed */
 @media (min-width: 1024px) {
-  .sidebar.collapsed {
-    transform: translateX(0);
+  .sidebar.sidebar-collapsed {
+    transform: translateX(-100%);
   }
 }
 
@@ -130,14 +137,24 @@ body {
   -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border-color);
   z-index: 30;
-  transition: left var(--transition-speed), background-color var(--transition-speed);
+  transition: left var(--transition-speed) ease, background-color var(--transition-speed);
   display: flex;
   align-items: center;
   min-width: 0;
 }
 
-.sidebar.collapsed ~ .app-header {
-  left: 0;
+/* Mobile: header always full width */
+@media (max-width: 1023px) {
+  .app-header {
+    left: 0;
+  }
+}
+
+/* Desktop: header adjusts when sidebar is collapsed */
+@media (min-width: 1024px) {
+  .app-header.header-sidebar-collapsed {
+    left: 0;
+  }
 }
 
 /* Main Content */
@@ -147,7 +164,7 @@ body {
   min-height: calc(100vh - var(--header-height));
   min-height: calc(100dvh - var(--header-height));
   padding: 16px;
-  transition: margin-left var(--transition-speed);
+  transition: margin-left var(--transition-speed) ease;
 }
 
 @media (min-width: 640px) {
@@ -156,8 +173,18 @@ body {
   }
 }
 
-.sidebar.collapsed ~ .main-content {
-  margin-left: 0;
+/* Mobile: main content always full width */
+@media (max-width: 1023px) {
+  .main-content {
+    margin-left: 0;
+  }
+}
+
+/* Desktop: main content adjusts when sidebar is collapsed */
+@media (min-width: 1024px) {
+  .main-content.main-sidebar-collapsed {
+    margin-left: 0;
+  }
 }
 
 /* Cards */
@@ -397,22 +424,6 @@ body {
 @media (min-width: 640px) {
   .stat-card {
     padding: 16px;
-  }
-}
-
-/* Mobile Responsive */
-@media (max-width: 1023px) {
-  .sidebar {
-    transform: translateX(-100%);
-  }
-  .sidebar.open {
-    transform: translateX(0);
-  }
-  .app-header {
-    left: 0;
-  }
-  .main-content {
-    margin-left: 0;
   }
 }
 
