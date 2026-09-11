@@ -84,7 +84,7 @@ With **62 tools across 8 categories**, MultiTool covers almost every everyday ut
 </details>
 
 <details>
-<summary><b>🎨 Image & Design Suite</b> — 9 tools</summary>
+<summary><b>🎨 Image & Design Suite</b> — 10 tools</summary>
 <br>
 
 | Tool | Description |
@@ -98,6 +98,7 @@ With **62 tools across 8 categories**, MultiTool covers almost every everyday ut
 | 😄 Meme Generator | Add top/bottom text with stroke and wrapping |
 | 🏷️ Batch Watermarker | Add text/logo watermarks to 20+ images, export as ZIP |
 | 🎯 Target Size Compressor | Binary search compression to hit exact KB target |
+| 🕵️ Image Anonymizer | Blur or pixelate sensitive areas |
 
 </details>
 
@@ -116,7 +117,7 @@ With **62 tools across 8 categories**, MultiTool covers almost every everyday ut
 </details>
 
 <details>
-<summary><b>🎓 Student & Academic</b> — 7 tools</summary>
+<summary><b>🎓 Student & Academic</b> — 8 tools</summary>
 <br>
 
 | Tool | Description |
@@ -128,7 +129,7 @@ With **62 tools across 8 categories**, MultiTool covers almost every everyday ut
 | 📚 Citation Generator | APA, MLA, and Chicago formats |
 | 🔢 Matrix Calculator | Add, subtract, multiply, and determinant (up to 4×4) |
 | 📖 Readability Analyzer | Flesch, Fog, and Coleman-Liau scores |
-
+| 📄 Printable Paper Generator | Generate lined, grid, or dot paper |
 </details>
 
 <details>
@@ -163,7 +164,7 @@ With **62 tools across 8 categories**, MultiTool covers almost every everyday ut
 </details>
 
 <details>
-<summary><b>🧮 Calculators & Converters</b> — 8 tools</summary>
+<summary><b>🧮 Calculators & Converters</b> — 7 tools</summary>
 <br>
 
 | Tool | Description |
@@ -175,16 +176,16 @@ With **62 tools across 8 categories**, MultiTool covers almost every everyday ut
 | ⚡ Speed Converter | Mbps ↔ MB/s and bandwidth units |
 | 🏷️ Unit Price Compare | Find the best value across multiple items |
 | 🖥️ Aspect Ratio Calculator | Screen dimensions with visual preview |
-| 🧩 QR Code Generator | Custom colors with PNG download |
 
 </details>
 
 <details>
-<summary><b>🔒 Security & Utilities</b> — 14 tools</summary>
+<summary><b>🔒 Security & Utilities</b> — 12 tools</summary>
 <br>
 
 | Tool | Description |
 |------|-------------|
+| 🧩 QR Code Generator | Custom colors with PNG download |
 | 🔐 AES Encrypter/Decrypter | AES-256-GCM with PBKDF2 (text & files) |
 | 👁️ Image Steganography | Hide secret messages in image LSBs |
 | 📶 Wi-Fi QR Generator | Share network credentials via QR code |
@@ -196,9 +197,6 @@ With **62 tools across 8 categories**, MultiTool covers almost every everyday ut
 | 🎯 Random Choice Picker | Animated random selection from lists |
 | 🎲 Dice Roller | D4, D6, D8, D10, D12, D20, D100 support |
 | 🪙 Coin Flip | With running statistics tracker |
-| 🕶️ Image Anonymizer | Blur or pixelate sensitive regions |
-| 📸 Photo to PDF | *(listed above)* |
-| 🧾 Printable Paper Generator | Lined, grid, dot, isometric, and music staff |
 
 </details>
 
