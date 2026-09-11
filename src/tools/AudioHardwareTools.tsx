@@ -194,12 +194,19 @@ export const WebcamMicInspector: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   const startDevices = async () => {
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      streamRef.current = mediaStream;
       setStream(mediaStream);
-      if (videoRef.current) videoRef.current.srcObject = mediaStream;
+      
+      // Ensure video element is ready and set srcObject
+      if (videoRef.current) {
+        videoRef.current.srcObject = mediaStream;
+        videoRef.current.play().catch(err => console.error('Video play failed:', err));
+      }
 
       const devices = await navigator.mediaDevices.enumerateDevices();
       setCameras(devices.filter(d => d.kind === 'videoinput'));
@@ -233,17 +240,34 @@ export const WebcamMicInspector: React.FC = () => {
   };
 
   const stopDevices = () => {
-    if (stream) {
-      stream.getTracks().forEach(t => t.stop());
-      setStream(null);
+    // Stop all media tracks
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
     }
+    
+    // Clear video srcObject
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    
+    setStream(null);
+    
+    // Close audio context
     if (audioContextRef.current) {
       audioContextRef.current.close();
       audioContextRef.current = null;
     }
+    
+    analyserRef.current = null;
   };
 
-  useEffect(() => { return () => stopDevices(); }, []);
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      stopDevices();
+    };
+  }, []);
 
   return (
     <div className="tool-container">
@@ -266,7 +290,7 @@ export const WebcamMicInspector: React.FC = () => {
               </select>
             </div>
           </div>
-          <video ref={videoRef} autoPlay muted className="w-full rounded-lg border" style={{ borderColor: 'var(--border-color)' }} />
+          <video ref={videoRef} autoPlay muted playsInline className="w-full rounded-lg border" style={{ borderColor: 'var(--border-color)' }} />
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             <div className="p-3 rounded-lg text-center" style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)' }}>
               <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Resolution</p>

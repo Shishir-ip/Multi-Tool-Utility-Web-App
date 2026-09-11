@@ -117,6 +117,9 @@ function App() {
     return saved ? saved === 'dark' : true;
   });
 
+  // Store dashboard scroll position
+  let dashboardScrollPosition = 0;
+
   const isOledMode = activeTool ? TIME_FOCUS_IDS.includes(activeTool) : false;
 
   useEffect(() => {
@@ -181,14 +184,25 @@ function App() {
   }, [filteredTools, searchQuery, activeCategory]);
 
   const openTool = useCallback((id: string) => {
+    // Save current scroll position before opening tool
+    dashboardScrollPosition = window.scrollY || document.documentElement.scrollTop;
+    
     setActiveTool(id);
     setActiveCategory(null);
     setSidebarOpen(false);
+    
+    // Scroll to top when opening a tool
+    window.scrollTo(0, 0);
   }, []);
 
   const goBack = useCallback(() => {
     setActiveTool(null);
     setSearchQuery('');
+    
+    // Restore dashboard scroll position
+    setTimeout(() => {
+      window.scrollTo(0, dashboardScrollPosition);
+    }, 0);
   }, []);
 
   const goToDashboard = useCallback(() => {
@@ -196,6 +210,11 @@ function App() {
     setActiveCategory(null);
     setSearchQuery('');
     setSidebarOpen(false);
+    
+    // Restore dashboard scroll position
+    setTimeout(() => {
+      window.scrollTo(0, dashboardScrollPosition);
+    }, 0);
   }, []);
 
   const selectCategory = useCallback((catName: string) => {

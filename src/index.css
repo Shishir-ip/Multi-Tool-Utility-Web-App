@@ -164,12 +164,14 @@ body {
   min-height: calc(100vh - var(--header-height));
   min-height: calc(100dvh - var(--header-height));
   padding: 16px;
+  padding-top: 24px;
   transition: margin-left var(--transition-speed) ease;
 }
 
 @media (min-width: 640px) {
   .main-content {
     padding: 24px;
+    padding-top: 32px;
   }
 }
 
