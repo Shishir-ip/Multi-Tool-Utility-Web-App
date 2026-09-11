@@ -2,13 +2,13 @@
 
 # 🧰 MultiTool
 
-### Your All-in-One Browser Utility Suite — 62 Tools, Zero Servers, Absolute Privacy
+### Your All-in-One Browser Utility Suite — 61 Tools, Zero Servers, Absolute Privacy
 
 **Every tool you need, running 100% locally in your browser. No uploads. No tracking. No compromises.**
 
 <br>
 
-<a href="https://multi-tool-demo.vercel.app" target="_blank">
+<a href="https://multi-tool-utility-web-app.vercel.app" target="_blank">
   <img src="https://img.shields.io/badge/🚀_Live_Demo-Click_Here-3b82f6?style=for-the-badge&labelColor=1e293b" alt="Live Demo" />
 </a>
 
@@ -24,11 +24,11 @@
 <img src="https://img.shields.io/badge/Vite-6-646cff?style=flat-square&logo=vite&labelColor=1e293b" alt="Vite" />
 <img src="https://img.shields.io/badge/Tailwind_CSS-4-06b6d4?style=flat-square&logo=tailwindcss&labelColor=1e293b" alt="Tailwind CSS" />
 <img src="https://img.shields.io/badge/Tools-62-10b981?style=flat-square&labelColor=1e293b" alt="62 Tools" />
-<a href="https://github.com/yourusername/multitool/pulls">
+<a href="https://github.com/Shishir-ip/Multi-Tool-Utility-Web-App/pulls">
   <img src="https://img.shields.io/badge/PRs-Welcome-f59e0b?style=flat-square&labelColor=1e293b" alt="PRs Welcome" />
 </a>
-<a href="https://github.com/yourusername/multitool/stargazers">
-  <img src="https://img.shields.io/github/stars/yourusername/multitool?style=flat-square&color=ec4899&labelColor=1e293b" alt="Stars" />
+<a href="https://github.com/Shishir-ip/Multi-Tool-Utility-Web-App/stargazers">
+  <img src="https://img.shields.io/github/stars/Shishir-ip/Multi-Tool-Utility-Web-App?style=flat-square&color=ec4899&labelColor=1e293b" alt="Stars" />
 </a>
 
 <br>
@@ -215,7 +215,7 @@ Getting MultiTool running locally is incredibly simple. No complex setup, no bac
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/multitool.git
+git clone https://github.com/Shishir-ip/Multi-Tool-Utility-Web-App.git
 cd multitool
 
 # Install dependencies (only CDN wrappers and type definitions)
@@ -318,7 +318,7 @@ Your tool will automatically:
 - ✅ Support browser back/forward navigation
 - ✅ Be lazy-loaded for optimal performance
 
-> 🎉 **First-time contributors welcome!** Check out issues labeled [`good first issue`](https://github.com/yourusername/multitool/issues?q=is%3Aissue+label%3A%22good+first+issue%22) to get started.
+> 🎉 **First-time contributors welcome!** Check out issues labeled [`good first issue`](https://github.com/Shishir-ip/Multi-Tool-Utility-Web-App/issues?q=is%3Aissue+label%3A%22good+first+issue%22) to get started.
 
 ---
 
@@ -408,7 +408,7 @@ Contributions are what make the open-source community an amazing place to learn,
 ### Contribution Ideas
 
 - 🆕 Add a new tool (see the [Contributor Guide](#-how-to-add-a-new-tool-contributor-guide))
-- 🐛 Fix bugs — check the [Issues tab](https://github.com/yourusername/multitool/issues)
+- 🐛 Fix bugs — check the [Issues tab](https://github.com/Shishir-ip/Multi-Tool-Utility-Web-App/issues)
 - 📝 Improve documentation
 - 🎨 Enhance UI/UX or accessibility
 - 🌐 Add translations / internationalization
@@ -446,14 +446,14 @@ copies or substantial portions of the Software.
 
 <br>
 
-<a href="https://github.com/yourusername/multitool/stargazers">
-  <img src="https://img.shields.io/github/stars/yourusername/multitool?style=social" alt="Star on GitHub" />
+<a href="https://github.com/Shishir-ip/Multi-Tool-Utility-Web-App/stargazers">
+  <img src="https://img.shields.io/github/stars/Shishir-ip/Multi-Tool-Utility-Web-App?style=social" alt="Star on GitHub" />
 </a>
-<a href="https://github.com/yourusername/multitool/fork">
-  <img src="https://img.shields.io/github/forks/yourusername/multitool?style=social" alt="Fork on GitHub" />
+<a href="https://github.com/Shishir-ip/Multi-Tool-Utility-Web-App/fork">
+  <img src="https://img.shields.io/github/forks/Shishir-ip/Multi-Tool-Utility-Web-App?style=social" alt="Fork on GitHub" />
 </a>
-<a href="https://github.com/yourusername/multitool/watchers">
-  <img src="https://img.shields.io/github/watchers/yourusername/multitool?style=social" alt="Watch on GitHub" />
+<a href="https://github.com/Shishir-ip/Multi-Tool-Utility-Web-App/watchers">
+  <img src="https://img.shields.io/github/watchers/Shishir-ip/Multi-Tool-Utility-Web-App?style=social" alt="Watch on GitHub" />
 </a>
 
 <br>
@@ -461,6 +461,6 @@ copies or substantial portions of the Software.
 
 **Made with ❤️ by the open-source community**
 
-[⭐ Star](https://github.com/yourusername/multitool/stargazers) · [🐛 Report Bug](https://github.com/yourusername/multitool/issues) · [✨ Request Feature](https://github.com/yourusername/multitool/issues)
+[⭐ Star](https://github.com/Shishir-ip/Multi-Tool-Utility-Web-App/stargazers) · [🐛 Report Bug](https://github.com/Shishir-ip/Multi-Tool-Utility-Web-App/issues) · [✨ Request Feature](https://github.com/Shishir-ip/Multi-Tool-Utility-Web-App/issues)
 
 </div>
