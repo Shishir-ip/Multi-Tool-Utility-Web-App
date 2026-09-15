@@ -5,58 +5,219 @@ import { ToolHeader, DropZone, Button } from '../components/Shared';
 export const PdfToImage: React.FC = () => {
   const [pages, setPages] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [progress, setProgress] = useState(0);
 
-  const loadPdf = async (files: FileList) => {
+  const loadPdf = (files: FileList) => {
     const file = files[0];
     if (!file) return;
+    
+    // Validate file type
+    if (file.type !== 'application/pdf') {
+      setError('Please upload a valid PDF file.');
+      return;
+    }
+
     setLoading(true);
-    try {
-      const pdfjsLib = await import('pdfjs-dist');
-      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-      const buf = await file.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({ data: buf } as any).promise;
-      const imgs: string[] = [];
-      for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i);
-        const vp = page.getViewport({ scale: 2 });
-        const c = document.createElement('canvas');
-        const ctx = c.getContext('2d')!;
-        c.width = vp.width; c.height = vp.height;
-        await page.render({ canvasContext: ctx as any, viewport: vp } as any).promise;
-        imgs.push(c.toDataURL('image/png'));
+    setError(null);
+    setProgress(0);
+
+    // Use FileReader to read file as ArrayBuffer
+    const reader = new FileReader();
+    
+    reader.onload = async (e) => {
+      try {
+        // Import pdfjs-dist dynamically
+        const pdfjsLib = await import('pdfjs-dist');
+        
+        // Explicitly set worker source
+        if (pdfjsLib.GlobalWorkerOptions) {
+          pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        }
+
+        // Convert ArrayBuffer to Uint8Array
+        const arrayBuffer = e.target?.result as ArrayBuffer;
+        const typedArray = new Uint8Array(arrayBuffer);
+
+        // Load PDF document
+        const pdf = await pdfjsLib.getDocument({ data: typedArray }).promise;
+        const totalPages = pdf.numPages;
+        const imgs: string[] = [];
+
+        // Render each page sequentially
+        for (let i = 1; i <= totalPages; i++) {
+          const page = await pdf.getPage(i);
+          
+          // Use high-DPI scale for crisp output
+          const viewport = page.getViewport({ scale: 2.0 });
+          
+          // Create off-screen canvas
+          const canvas = document.createElement('canvas');
+          const context = canvas.getContext('2d');
+          
+          if (!context) {
+            throw new Error('Failed to get canvas context');
+          }
+
+          // Set canvas dimensions
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+
+          // Render PDF page to canvas
+          await page.render({
+            canvasContext: context,
+            viewport: viewport
+          } as any).promise;
+
+          // Convert canvas to PNG data URL
+          const dataUrl = canvas.toDataURL('image/png');
+          imgs.push(dataUrl);
+
+          // Update progress
+          setProgress(Math.round((i / totalPages) * 100));
+
+          // Clean up canvas to free memory
+          canvas.width = 0;
+          canvas.height = 0;
+        }
+
+        setPages(imgs);
+      } catch (err) {
+        console.error('PDF Processing Error:', err);
+        setError('Failed to load PDF. The file may be encrypted, corrupted, or invalid.');
+      } finally {
+        setLoading(false);
       }
-      setPages(imgs);
-    } catch (e) { console.error(e); alert('Failed to load PDF'); }
-    setLoading(false);
+    };
+
+    reader.onerror = () => {
+      console.error('FileReader Error:', reader.error);
+      setError('Failed to read the file. Please try again.');
+      setLoading(false);
+    };
+
+    // Read file as ArrayBuffer
+    reader.readAsArrayBuffer(file);
   };
 
   const downloadPage = (dataUrl: string, idx: number) => {
     const a = document.createElement('a');
-    a.href = dataUrl; a.download = `page-${idx + 1}.png`; a.click();
+    a.href = dataUrl;
+    a.download = `page-${idx + 1}.png`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  const downloadAllAsZip = async () => {
+    if (pages.length === 0) return;
+
+    try {
+      const JSZip = (await import('jszip')).default;
+      const zip = new JSZip();
+
+      // Add each page to the zip
+      for (let i = 0; i < pages.length; i++) {
+        const dataUrl = pages[i];
+        const base64Data = dataUrl.split(',')[1];
+        zip.file(`page-${i + 1}.png`, base64Data, { base64: true });
+      }
+
+      // Generate and download zip
+      const blob = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'pdf-pages.zip';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      
+      // Revoke object URL to free memory
+      setTimeout(() => URL.revokeObjectURL(url), 100);
+    } catch (err) {
+      console.error('ZIP creation failed:', err);
+      alert('Failed to create ZIP file. Please try downloading pages individually.');
+    }
+  };
+
+  const resetTool = () => {
+    // Revoke all object URLs to prevent memory leaks
+    pages.forEach(pageUrl => {
+      if (pageUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(pageUrl);
+      }
+    });
+    setPages([]);
+    setError(null);
+    setProgress(0);
   };
 
   return (
     <div className="tool-container">
       <ToolHeader icon="fa-file-image" title="PDF to Image" description="Convert PDF pages to PNG images" color="#ef4444" />
+      
       {pages.length === 0 ? (
-        <DropZone onFiles={loadPdf} accept=".pdf" icon="fa-file-pdf" title="Upload a PDF file" subtitle="Each page will become a PNG image" />
+        <div className="space-y-4">
+          <DropZone onFiles={loadPdf} accept=".pdf" icon="fa-file-pdf" title="Upload a PDF file" subtitle="Each page will become a PNG image" />
+          
+          {error && (
+            <div className="p-4 rounded-lg" style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid #ef4444' }}>
+              <p className="text-sm" style={{ color: '#ef4444' }}>
+                <i className="fas fa-exclamation-circle mr-2"></i>
+                {error}
+              </p>
+            </div>
+          )}
+
+          {loading && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Processing PDF...</span>
+                <span className="text-sm font-medium" style={{ color: 'var(--accent)' }}>{progress}%</span>
+              </div>
+              <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: 'var(--bg-tertiary)' }}>
+                <div 
+                  className="h-full rounded-full transition-all duration-300" 
+                  style={{ width: `${progress}%`, background: 'var(--accent)' }}
+                />
+              </div>
+            </div>
+          )}
+        </div>
       ) : (
         <div className="space-y-4">
-          {loading && <p style={{ color: 'var(--text-muted)' }}>Processing...</p>}
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+              <i className="fas fa-check-circle mr-1" style={{ color: '#10b981' }}></i>
+              Successfully extracted {pages.length} page{pages.length !== 1 ? 's' : ''}
+            </p>
+            {pages.length > 1 && (
+              <Button onClick={downloadAllAsZip} icon="fa-file-archive" variant="secondary">
+                Download All as ZIP
+              </Button>
+            )}
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {pages.map((p, i) => (
               <div key={i} className="border rounded-lg overflow-hidden" style={{ borderColor: 'var(--border-color)' }}>
                 <img src={p} alt={`Page ${i + 1}`} className="w-full" />
                 <div className="p-2 flex justify-between items-center" style={{ background: 'var(--bg-tertiary)' }}>
                   <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Page {i + 1}</span>
-                  <button onClick={() => downloadPage(p, i)} className="text-xs px-2 py-1 rounded" style={{ background: 'var(--accent)', color: 'white' }}>
-                    <i className="fas fa-download mr-1"></i> Download
+                  <button 
+                    onClick={() => downloadPage(p, i)} 
+                    className="text-xs px-2 py-1 rounded flex items-center gap-1" 
+                    style={{ background: 'var(--accent)', color: 'white' }}
+                  >
+                    <i className="fas fa-download"></i> Download
                   </button>
                 </div>
               </div>
             ))}
           </div>
-          <Button variant="secondary" onClick={() => setPages([])} icon="fa-redo">Load Another PDF</Button>
+
+          <Button variant="secondary" onClick={resetTool} icon="fa-redo">Load Another PDF</Button>
         </div>
       )}
     </div>
