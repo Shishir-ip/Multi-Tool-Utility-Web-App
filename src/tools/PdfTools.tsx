@@ -448,7 +448,9 @@ export const PdfExtractor: React.FC = () => {
     });
   };
 
-  // Generate page thumbnails using direct DOM manipulation
+  // Generate page thumbnails using two-step process:
+  // Step 1: Create all card shells immediately (UI populates instantly)
+  // Step 2: Render PDF pages onto canvas elements asynchronously
   const generatePageThumbnails = async (pdf: any) => {
     const gridContainer = gridContainerRef.current;
     if (!gridContainer) {
@@ -458,57 +460,60 @@ export const PdfExtractor: React.FC = () => {
 
     gridContainer.innerHTML = ''; // Clear previous contents
 
+    // STEP 1: Create all card shells immediately so UI populates instantly
+    const cards: Array<{ pageNum: number; canvas: HTMLCanvasElement }> = [];
+    
     for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+      const card = document.createElement('div');
+      card.className = 'pdf-thumb-card';
+      card.dataset.page = pageNum.toString();
+
+      const canvas = document.createElement('canvas');
+      
+      const label = document.createElement('span');
+      label.className = 'thumb-label';
+      label.textContent = `Page ${pageNum}`;
+
+      const checkmark = document.createElement('div');
+      checkmark.className = 'thumb-checkmark';
+      checkmark.innerHTML = '<i class="fas fa-check"></i>';
+
+      card.appendChild(canvas);
+      card.appendChild(label);
+      card.appendChild(checkmark);
+      
+      // Selection Click Listener
+      card.addEventListener('click', () => togglePageSelection(card, pageNum));
+
+      // Append card to DOM immediately
+      gridContainer.appendChild(card);
+      cards.push({ pageNum, canvas });
+    }
+
+    // STEP 2: Render PDF pages onto canvas elements asynchronously
+    for (const item of cards) {
       try {
-        const page = await pdf.getPage(pageNum);
-        const viewport = page.getViewport({ scale: 0.35 });
-
-        // Create Card Container
-        const card = document.createElement('div');
-        card.className = 'pdf-thumb-card';
-        card.dataset.page = pageNum.toString();
-
-        // Create Canvas
-        const canvas = document.createElement('canvas');
-        const context = canvas.getContext('2d');
-        if (!context) continue;
+        const page = await pdf.getPage(item.pageNum);
+        const viewport = page.getViewport({ scale: 0.3 });
+        const ctx = item.canvas.getContext('2d');
         
-        canvas.width = Math.floor(viewport.width);
-        canvas.height = Math.floor(viewport.height);
+        if (!ctx) {
+          console.warn(`Failed to get canvas context for page ${item.pageNum}`);
+          continue;
+        }
 
-        // Render Page to Canvas
-        const renderContext = { canvasContext: context, viewport: viewport };
-        const renderTask = page.render(renderContext);
-        await renderTask.promise;
+        item.canvas.width = Math.floor(viewport.width);
+        item.canvas.height = Math.floor(viewport.height);
 
-        // Page Label
-        const label = document.createElement('span');
-        label.className = 'thumb-label';
-        label.textContent = `Page ${pageNum}`;
-
-        // Selection Checkmark
-        const checkmark = document.createElement('div');
-        checkmark.className = 'thumb-checkmark';
-        checkmark.innerHTML = '<i class="fas fa-check"></i>';
-
-        card.appendChild(canvas);
-        card.appendChild(label);
-        card.appendChild(checkmark);
-        
-        // Selection Click Listener
-        card.addEventListener('click', () => togglePageSelection(card, pageNum));
-
-        // Append immediately to show progress
-        gridContainer.appendChild(card);
-        
-      } catch (err) {
-        console.error(`Error rendering preview for page ${pageNum}:`, err);
+        await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+      } catch (pageErr) {
+        console.warn(`Failed to render thumbnail for page ${item.pageNum}:`, pageErr);
       }
     }
   };
 
   // Render thumbnails for all pages
-  const renderThumbnails = async (pdfFile: File, totalPages: number) => {
+  const renderThumbnails = async (pdfFile: File) => {
     // Cancel any ongoing thumbnail generation
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -525,9 +530,11 @@ export const PdfExtractor: React.FC = () => {
           'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
       }
 
+      // CRITICAL: Clone the ArrayBuffer to prevent detachment issues
+      // When pdf-lib and pdfjsLib both process the same buffer, it can get detached
       const arrayBuffer = await pdfFile.arrayBuffer();
-      const typedArray = new Uint8Array(arrayBuffer);
-      const pdf = await (window as any).pdfjsLib.getDocument({  typedArray }).promise;
+      const pdfJsBuffer = arrayBuffer.slice(0); // Clone for PDF.js
+      const pdf = await (window as any).pdfjsLib.getDocument({ data: new Uint8Array(pdfJsBuffer) }).promise;
 
       if (!signal.aborted) {
         await generatePageThumbnails(pdf);
@@ -562,7 +569,7 @@ export const PdfExtractor: React.FC = () => {
       setNumPages(pageCount);
       
       // Start rendering thumbnails
-      renderThumbnails(f, pageCount);
+      renderThumbnails(f);
     } catch (e) { 
       console.error('Invalid PDF:', e);
       alert('Invalid PDF'); 
@@ -649,19 +656,6 @@ export const PdfExtractor: React.FC = () => {
             <div 
               ref={gridContainerRef}
               id="extractor-thumbnails-grid"
-              className="pdf-thumbnail-grid"
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))',
-                gap: '12px',
-                maxHeight: '400px',
-                overflowY: 'auto',
-                padding: '8px',
-                borderRadius: '8px',
-                background: 'var(--bg-tertiary)',
-                border: '1px solid var(--border-color)',
-                minHeight: '100px'
-              }}
             />
           </div>
 
