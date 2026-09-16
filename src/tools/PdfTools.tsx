@@ -374,10 +374,10 @@ export const PdfExtractor: React.FC = () => {
   const [numPages, setNumPages] = useState(0);
   const [pageRange, setPageRange] = useState('');
   const [extracting, setExtracting] = useState(false);
-  const [thumbnails, setThumbnails] = useState<string[]>([]);
   const [selectedPages, setSelectedPages] = useState<Set<number>>(new Set());
   const [loadingThumbnails, setLoadingThumbnails] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const gridContainerRef = useRef<HTMLDivElement | null>(null);
 
   // Parse page range string to array of page numbers (1-indexed)
   const parsePageRange = (range: string, total: number): number[] => {
@@ -431,6 +431,82 @@ export const PdfExtractor: React.FC = () => {
     return ranges.join(',');
   };
 
+  // Toggle page selection
+  const togglePageSelection = (card: HTMLElement, pageNum: number) => {
+    setSelectedPages(prev => {
+      const next = new Set(prev);
+      if (next.has(pageNum)) {
+        next.delete(pageNum);
+        card.classList.remove('selected');
+      } else {
+        next.add(pageNum);
+        card.classList.add('selected');
+      }
+      // Sync to range input
+      setPageRange(pagesToRange(Array.from(next)));
+      return next;
+    });
+  };
+
+  // Generate page thumbnails using direct DOM manipulation
+  const generatePageThumbnails = async (pdf: any) => {
+    const gridContainer = gridContainerRef.current;
+    if (!gridContainer) {
+      console.error("Target container #extractor-thumbnails-grid not found in DOM!");
+      return;
+    }
+
+    gridContainer.innerHTML = ''; // Clear previous contents
+
+    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+      try {
+        const page = await pdf.getPage(pageNum);
+        const viewport = page.getViewport({ scale: 0.35 });
+
+        // Create Card Container
+        const card = document.createElement('div');
+        card.className = 'pdf-thumb-card';
+        card.dataset.page = pageNum.toString();
+
+        // Create Canvas
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        if (!context) continue;
+        
+        canvas.width = Math.floor(viewport.width);
+        canvas.height = Math.floor(viewport.height);
+
+        // Render Page to Canvas
+        const renderContext = { canvasContext: context, viewport: viewport };
+        const renderTask = page.render(renderContext);
+        await renderTask.promise;
+
+        // Page Label
+        const label = document.createElement('span');
+        label.className = 'thumb-label';
+        label.textContent = `Page ${pageNum}`;
+
+        // Selection Checkmark
+        const checkmark = document.createElement('div');
+        checkmark.className = 'thumb-checkmark';
+        checkmark.innerHTML = '<i class="fas fa-check"></i>';
+
+        card.appendChild(canvas);
+        card.appendChild(label);
+        card.appendChild(checkmark);
+        
+        // Selection Click Listener
+        card.addEventListener('click', () => togglePageSelection(card, pageNum));
+
+        // Append immediately to show progress
+        gridContainer.appendChild(card);
+        
+      } catch (err) {
+        console.error(`Error rendering preview for page ${pageNum}:`, err);
+      }
+    }
+  };
+
   // Render thumbnails for all pages
   const renderThumbnails = async (pdfFile: File, totalPages: number) => {
     // Cancel any ongoing thumbnail generation
@@ -441,7 +517,6 @@ export const PdfExtractor: React.FC = () => {
     const signal = abortControllerRef.current.signal;
 
     setLoadingThumbnails(true);
-    const thumbs: string[] = [];
 
     try {
       const pdfjsLib = await import('pdfjs-dist');
@@ -454,42 +529,17 @@ export const PdfExtractor: React.FC = () => {
       const typedArray = new Uint8Array(arrayBuffer);
       const pdf = await (window as any).pdfjsLib.getDocument({  typedArray }).promise;
 
-      // Render each page at low scale for thumbnails
-      for (let i = 1; i <= totalPages; i++) {
-        if (signal.aborted) break;
-
-        const page = await pdf.getPage(i);
-        const viewport = page.getViewport({ scale: 0.3 }); // Lightweight scale
-        
-        const canvas = document.createElement('canvas');
-        const context = canvas.getContext('2d');
-        if (!context) continue;
-
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
-
-        await page.render({
-          canvasContext: context,
-          viewport: viewport
-        } as any).promise;
-
-        thumbs.push(canvas.toDataURL('image/jpeg', 0.7)); // Compressed JPEG for memory efficiency
-        
-        // Yield to main thread every 5 pages
-        if (i % 5 === 0) {
-          await new Promise(resolve => setTimeout(resolve, 0));
-        }
-      }
-
       if (!signal.aborted) {
-        setThumbnails(thumbs);
+        await generatePageThumbnails(pdf);
       }
     } catch (error) {
       if (!signal.aborted) {
         console.error('Thumbnail generation failed:', error);
       }
     } finally {
-      setLoadingThumbnails(false);
+      if (!signal.aborted) {
+        setLoadingThumbnails(false);
+      }
     }
   };
 
@@ -497,7 +547,9 @@ export const PdfExtractor: React.FC = () => {
     const f = fl[0]; if (!f) return;
     
     // Reset state
-    setThumbnails([]);
+    if (gridContainerRef.current) {
+      gridContainerRef.current.innerHTML = '';
+    }
     setSelectedPages(new Set());
     setPageRange('');
     
@@ -517,26 +569,24 @@ export const PdfExtractor: React.FC = () => {
     }
   };
 
-  // Toggle page selection
-  const togglePage = (pageNum: number) => {
-    setSelectedPages(prev => {
-      const next = new Set(prev);
-      if (next.has(pageNum)) {
-        next.delete(pageNum);
-      } else {
-        next.add(pageNum);
-      }
-      // Sync to range input
-      setPageRange(pagesToRange(Array.from(next)));
-      return next;
-    });
-  };
-
   // Handle range input change - sync to thumbnails
   const handleRangeChange = (value: string) => {
     setPageRange(value);
     const pages = parsePageRange(value, numPages);
     setSelectedPages(new Set(pages));
+    
+    // Update DOM cards to match selection
+    if (gridContainerRef.current) {
+      const cards = gridContainerRef.current.querySelectorAll('.pdf-thumb-card');
+      cards.forEach((card) => {
+        const pageNum = parseInt(card.getAttribute('data-page') || '0');
+        if (pages.includes(pageNum)) {
+          card.classList.add('selected');
+        } else {
+          card.classList.remove('selected');
+        }
+      });
+    }
   };
 
   // Cleanup on unmount or file change
@@ -544,10 +594,12 @@ export const PdfExtractor: React.FC = () => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
+    if (gridContainerRef.current) {
+      gridContainerRef.current.innerHTML = '';
+    }
     setFile(null);
     setNumPages(0);
     setPageRange('');
-    setThumbnails([]);
     setSelectedPages(new Set());
     setLoadingThumbnails(false);
   };
@@ -589,97 +641,29 @@ export const PdfExtractor: React.FC = () => {
             <strong>{file.name}</strong> — {numPages} pages
           </p>
 
-          {/* Thumbnail Grid */}
-          {thumbnails.length > 0 && (
-            <div>
-              <label className="text-sm font-medium block mb-2" style={{ color: 'var(--text-secondary)' }}>
-                Click pages to select (or use range input below)
-              </label>
-              <div 
-                className="pdf-thumbnail-grid"
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))',
-                  gap: '12px',
-                  maxHeight: '400px',
-                  overflowY: 'auto',
-                  padding: '8px',
-                  borderRadius: '8px',
-                  background: 'var(--bg-tertiary)',
-                  border: '1px solid var(--border-color)'
-                }}
-              >
-                {thumbnails.map((thumb, idx) => {
-                  const pageNum = idx + 1;
-                  const isSelected = selectedPages.has(pageNum);
-                  return (
-                    <div
-                      key={idx}
-                      onClick={() => togglePage(pageNum)}
-                      className="pdf-thumbnail-card"
-                      style={{
-                        position: 'relative',
-                        cursor: 'pointer',
-                        borderRadius: '8px',
-                        overflow: 'hidden',
-                        border: isSelected ? '3px solid var(--accent)' : '2px solid var(--border-color)',
-                        background: isSelected ? 'color-mix(in srgb, var(--accent) 10%, transparent)' : 'var(--card-bg)',
-                        transition: 'all 0.2s ease',
-                        boxShadow: isSelected ? '0 0 12px color-mix(in srgb, var(--accent) 30%, transparent)' : 'none'
-                      }}
-                    >
-                      <img 
-                        src={thumb} 
-                        alt={`Page ${pageNum}`}
-                        style={{
-                          width: '100%',
-                          height: 'auto',
-                          display: 'block'
-                        }}
-                      />
-                      {/* Page number badge */}
-                      <div
-                        style={{
-                          position: 'absolute',
-                          top: '6px',
-                          left: '6px',
-                          background: isSelected ? 'var(--accent)' : 'rgba(0,0,0,0.7)',
-                          color: 'white',
-                          padding: '2px 8px',
-                          borderRadius: '4px',
-                          fontSize: '11px',
-                          fontWeight: '600'
-                        }}
-                      >
-                        Page {pageNum}
-                      </div>
-                      {/* Selection indicator */}
-                      {isSelected && (
-                        <div
-                          style={{
-                            position: 'absolute',
-                            top: '6px',
-                            right: '6px',
-                            background: 'var(--accent)',
-                            color: 'white',
-                            width: '24px',
-                            height: '24px',
-                            borderRadius: '50%',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: '14px'
-                          }}
-                        >
-                          <i className="fas fa-check"></i>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+          {/* Thumbnail Grid Container */}
+          <div>
+            <label className="text-sm font-medium block mb-2" style={{ color: 'var(--text-secondary)' }}>
+              Click pages to select (or use range input below)
+            </label>
+            <div 
+              ref={gridContainerRef}
+              id="extractor-thumbnails-grid"
+              className="pdf-thumbnail-grid"
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))',
+                gap: '12px',
+                maxHeight: '400px',
+                overflowY: 'auto',
+                padding: '8px',
+                borderRadius: '8px',
+                background: 'var(--bg-tertiary)',
+                border: '1px solid var(--border-color)',
+                minHeight: '100px'
+              }}
+            />
+          </div>
 
           {loadingThumbnails && (
             <div className="flex items-center gap-2 p-3 rounded-lg" style={{ background: 'var(--bg-tertiary)' }}>
