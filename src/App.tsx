@@ -73,6 +73,16 @@ const ToolModules: Record<string, React.LazyExoticComponent<React.FC>> = {
   'aspect-ratio-calc': lazy(() => import('./tools/AnalysisTools').then(m => ({ default: m.AspectRatioCalc }))),
   'readability-analyzer': lazy(() => import('./tools/AnalysisTools').then(m => ({ default: m.ReadabilityAnalyzer }))),
   'paper-generator': lazy(() => import('./tools/AnalysisTools').then(m => ({ default: m.PaperGenerator }))),
+
+  // ── NEW: Document Conversion Tools ──
+  'docx-to-pdf': lazy(() => import('./tools/DocumentConversion').then(m => ({ default: m.DocxToPdf }))),
+  'pptx-to-pdf': lazy(() => import('./tools/DocumentConversion').then(m => ({ default: m.PptxToPdf }))),
+  'pdf-to-docx': lazy(() => import('./tools/DocumentConversion').then(m => ({ default: m.PdfToDocx }))),
+  'pdf-to-pptx': lazy(() => import('./tools/DocumentConversion').then(m => ({ default: m.PdfToPptx }))),
+  'pptx-presenter': lazy(() => import('./tools/PptxPresenter').then(m => ({ default: m.PptxPresenter }))),
+
+  // ── NEW: WhatsApp Chat ──
+  'whatsapp-chat': lazy(() => import('./tools/WhatsAppChat').then(m => ({ default: m.WhatsAppChat }))),
 };
 
 const VALID_TOOL_IDS = TOOLS.map(t => t.id);
