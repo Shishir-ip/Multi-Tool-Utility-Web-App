@@ -12,8 +12,11 @@ export const PdfToImage: React.FC = () => {
     const file = files[0];
     if (!file) return;
     
+    console.log('📄 PDF file selected:', file.name, 'Size:', file.size, 'bytes');
+    
     // Validate file type
     if (file.type !== 'application/pdf') {
+      console.error('❌ Invalid file type:', file.type);
       setError('Please upload a valid PDF file.');
       return;
     }
@@ -22,34 +25,44 @@ export const PdfToImage: React.FC = () => {
     setError(null);
     setProgress(0);
 
-    // Use FileReader to read file as ArrayBuffer
-    const reader = new FileReader();
+    // 1. Enforce worker source EXACTLY matching the library version
+    console.log('🔧 Setting up PDF.js worker...');
+    if ((window as any).pdfjsLib) {
+      (window as any).pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      console.log('✅ PDF.js worker source set to:', (window as any).pdfjsLib.GlobalWorkerOptions.workerSrc);
+    } else {
+      console.error('❌ pdfjsLib not found on window object!');
+      setError('PDF.js library failed to load. Please refresh the page.');
+      setLoading(false);
+      return;
+    }
+
+    // 2. File Upload Listener with FileReader
+    const fileReader = new FileReader();
     
-    reader.onload = async (e) => {
+    fileReader.onload = async function() {
       try {
-        // Import pdfjs-dist dynamically
-        const pdfjsLib = await import('pdfjs-dist');
+        const typedarray = new Uint8Array(this.result as ArrayBuffer);
+        console.log('✅ PDF ArrayBuffer loaded. Byte length:', typedarray.length);
+
+        // Explicitly pass data as an object
+        console.log('📥 Loading PDF document...');
+        const loadingTask = (window as any).pdfjsLib.getDocument({ data: typedarray });
         
-        // Explicitly set worker source
-        if (pdfjsLib.GlobalWorkerOptions) {
-          pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-        }
-
-        // Convert ArrayBuffer to Uint8Array
-        const arrayBuffer = e.target?.result as ArrayBuffer;
-        const typedArray = new Uint8Array(arrayBuffer);
-
-        // Load PDF document
-        const pdf = await pdfjsLib.getDocument({ data: typedArray }).promise;
+        const pdf = await loadingTask.promise;
+        console.log('✅ PDF parsed successfully! Total pages:', pdf.numPages);
+        
         const totalPages = pdf.numPages;
         const imgs: string[] = [];
 
         // Render each page sequentially
         for (let i = 1; i <= totalPages; i++) {
+          console.log(`📄 Rendering page ${i} of ${totalPages}...`);
           const page = await pdf.getPage(i);
           
           // Use high-DPI scale for crisp output
           const viewport = page.getViewport({ scale: 2.0 });
+          console.log(`  Viewport dimensions: ${viewport.width}x${viewport.height}`);
           
           // Create off-screen canvas
           const canvas = document.createElement('canvas');
@@ -72,6 +85,7 @@ export const PdfToImage: React.FC = () => {
           // Convert canvas to PNG data URL
           const dataUrl = canvas.toDataURL('image/png');
           imgs.push(dataUrl);
+          console.log(`✅ Page ${i} rendered successfully`);
 
           // Update progress
           setProgress(Math.round((i / totalPages) * 100));
@@ -81,23 +95,31 @@ export const PdfToImage: React.FC = () => {
           canvas.height = 0;
         }
 
+        console.log('🎉 All pages rendered successfully!');
         setPages(imgs);
-      } catch (err) {
-        console.error('PDF Processing Error:', err);
-        setError('Failed to load PDF. The file may be encrypted, corrupted, or invalid.');
+      } catch (error) {
+        // Expose the REAL error to the console
+        console.error('❌ CRITICAL PDF.JS ERROR:', error);
+        console.error('Error Name:', (error as Error).name);
+        console.error('Error Message:', (error as Error).message);
+        console.error('Error Stack:', (error as Error).stack);
+        
+        // Show UI error with details
+        setError(`Failed to load PDF. Details: ${(error as Error).message}`);
       } finally {
         setLoading(false);
       }
     };
-
-    reader.onerror = () => {
-      console.error('FileReader Error:', reader.error);
+    
+    fileReader.onerror = function() {
+      console.error('❌ FileReader Error:', fileReader.error);
       setError('Failed to read the file. Please try again.');
       setLoading(false);
     };
-
-    // Read file as ArrayBuffer
-    reader.readAsArrayBuffer(file);
+    
+    // MUST read as ArrayBuffer, not DataURL or Text
+    console.log('📖 Reading file as ArrayBuffer...');
+    fileReader.readAsArrayBuffer(file);
   };
 
   const downloadPage = (dataUrl: string, idx: number) => {
