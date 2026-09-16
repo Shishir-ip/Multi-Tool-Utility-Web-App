@@ -448,57 +448,81 @@ export const PdfExtractor: React.FC = () => {
     });
   };
 
-  // Generate page thumbnails using two-step process:
-  // Step 1: Create all card shells immediately (UI populates instantly)
-  // Step 2: Render PDF pages onto canvas elements asynchronously
+  // Synchronize range input from selected cards
+  const syncRangeInputFromCards = () => {
+    if (!gridContainerRef.current) return;
+    const selected: number[] = [];
+    gridContainerRef.current.querySelectorAll('.extractor-card.selected').forEach(card => {
+      const pageNum = parseInt(card.getAttribute('data-page') || '0');
+      if (pageNum > 0) selected.push(pageNum);
+    });
+    selected.sort((a, b) => a - b);
+    setSelectedPages(new Set(selected));
+    setPageRange(pagesToRange(selected));
+  };
+
+  // Generate page thumbnails using foolproof two-step process:
+  // Step 1: SYNCHRONOUSLY create & mount all card shells (UI populates INSTANTLY)
+  // Step 2: ASYNCHRONOUSLY render PDF viewports onto mounted canvases
   const generatePageThumbnails = async (pdf: any) => {
-    const gridContainer = gridContainerRef.current;
-    if (!gridContainer) {
-      console.error("Target container #extractor-thumbnails-grid not found in DOM!");
+    // Get grid by hardcoded ID - guaranteed to exist
+    const grid = document.getElementById('extractor-grid');
+    if (!grid) {
+      console.error("Critical Error: #extractor-grid element missing from DOM!");
       return;
     }
 
-    gridContainer.innerHTML = ''; // Clear previous contents
+    grid.innerHTML = ''; // Reset container
 
-    // STEP 1: Create all card shells immediately so UI populates instantly
-    const cards: Array<{ pageNum: number; canvas: HTMLCanvasElement }> = [];
-    
-    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+    const cardElements: Array<{ pageNum: number; canvas: HTMLCanvasElement; card: HTMLElement }> = [];
+
+    // ═══════════════════════════════════════════════════════════════
+    // STEP 1: Build & Mount ALL cards IMMEDIATELY (Synchronous)
+    // Cards appear instantly with page numbers visible
+    // ═══════════════════════════════════════════════════════════════
+    for (let i = 1; i <= pdf.numPages; i++) {
       const card = document.createElement('div');
-      card.className = 'pdf-thumb-card';
-      card.dataset.page = pageNum.toString();
+      card.className = 'extractor-card';
+      card.dataset.page = i.toString();
 
       const canvas = document.createElement('canvas');
-      
-      const label = document.createElement('span');
-      label.className = 'thumb-label';
-      label.textContent = `Page ${pageNum}`;
+      canvas.className = 'thumb-canvas';
+
+      const pageBadge = document.createElement('span');
+      pageBadge.className = 'page-badge';
+      pageBadge.textContent = `Page ${i}`;
 
       const checkmark = document.createElement('div');
-      checkmark.className = 'thumb-checkmark';
+      checkmark.className = 'extractor-checkmark';
       checkmark.innerHTML = '<i class="fas fa-check"></i>';
 
       card.appendChild(canvas);
-      card.appendChild(label);
+      card.appendChild(pageBadge);
       card.appendChild(checkmark);
-      
-      // Selection Click Listener
-      card.addEventListener('click', () => togglePageSelection(card, pageNum));
 
-      // Append card to DOM immediately
-      gridContainer.appendChild(card);
-      cards.push({ pageNum, canvas });
+      // Toggle selection logic on click
+      card.addEventListener('click', () => {
+        card.classList.toggle('selected');
+        syncRangeInputFromCards();
+      });
+
+      // MOUNT IMMEDIATELY - no waiting for canvas rendering
+      grid.appendChild(card);
+      cardElements.push({ pageNum: i, canvas, card });
     }
 
-    // STEP 2: Render PDF pages onto canvas elements asynchronously
-    for (const item of cards) {
+    // ═══════════════════════════════════════════════════════════════
+    // STEP 2: Asynchronously draw PDF viewports onto mounted canvases
+    // Cards remain visible even if rendering fails (fallback UI)
+    // ═══════════════════════════════════════════════════════════════
+    for (const item of cardElements) {
       try {
         const page = await pdf.getPage(item.pageNum);
         const viewport = page.getViewport({ scale: 0.3 });
         const ctx = item.canvas.getContext('2d');
-        
+
         if (!ctx) {
-          console.warn(`Failed to get canvas context for page ${item.pageNum}`);
+          console.warn(`Could not get canvas context for page ${item.pageNum}`);
           continue;
         }
 
@@ -506,8 +530,17 @@ export const PdfExtractor: React.FC = () => {
         item.canvas.height = Math.floor(viewport.height);
 
         await page.render({ canvasContext: ctx, viewport: viewport }).promise;
-      } catch (pageErr) {
-        console.warn(`Failed to render thumbnail for page ${item.pageNum}:`, pageErr);
+      } catch (renderError) {
+        // Fallback UI: show placeholder when rendering fails
+        console.warn(`Could not render page ${item.pageNum} canvas:`, renderError);
+        item.card.classList.add('render-failed');
+        const fallback = document.createElement('div');
+        fallback.className = 'render-fallback';
+        fallback.innerHTML = `<i class="fas fa-file-pdf"></i><span>Page ${item.pageNum}</span>`;
+        // Replace canvas with fallback
+        if (item.canvas.parentNode) {
+          item.canvas.parentNode.replaceChild(fallback, item.canvas);
+        }
       }
     }
   };
@@ -583,8 +616,9 @@ export const PdfExtractor: React.FC = () => {
     setSelectedPages(new Set(pages));
     
     // Update DOM cards to match selection
-    if (gridContainerRef.current) {
-      const cards = gridContainerRef.current.querySelectorAll('.pdf-thumb-card');
+    const grid = document.getElementById('extractor-grid');
+    if (grid) {
+      const cards = grid.querySelectorAll('.extractor-card');
       cards.forEach((card) => {
         const pageNum = parseInt(card.getAttribute('data-page') || '0');
         if (pages.includes(pageNum)) {
@@ -648,14 +682,15 @@ export const PdfExtractor: React.FC = () => {
             <strong>{file.name}</strong> — {numPages} pages
           </p>
 
-          {/* Thumbnail Grid Container */}
+          {/* Thumbnail Grid Container - hardcoded ID for guaranteed DOM access */}
           <div>
             <label className="text-sm font-medium block mb-2" style={{ color: 'var(--text-secondary)' }}>
               Click pages to select (or use range input below)
             </label>
             <div 
               ref={gridContainerRef}
-              id="extractor-thumbnails-grid"
+              id="extractor-grid"
+              className="extractor-grid-container"
             />
           </div>
 

@@ -497,85 +497,116 @@ canvas, img, video, iframe {
   max-width: 100%;
 }
 
-/* PDF Extractor Thumbnail Grid */
-#extractor-thumbnails-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: 12px;
-  width: 100%;
-  max-height: 450px;
-  overflow-y: auto;
-  padding: 12px;
-  background: var(--bg-tertiary);
-  border-radius: 8px;
-  min-height: 200px;
-  border: 1px solid var(--border-color);
+/* PDF Extractor Thumbnail Grid - FOOLPROOF LAYOUT */
+.extractor-grid-container,
+#extractor-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)) !important;
+  gap: 16px !important;
+  width: 100% !important;
+  min-height: 250px !important;
+  max-height: 450px !important;
+  overflow-y: auto !important;
+  padding: 16px !important;
+  background: var(--bg-tertiary) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 8px !important;
+  margin-top: 12px !important;
+  box-sizing: border-box !important;
 }
 
-/* PDF Thumbnail Cards */
-.pdf-thumb-card {
-  background: var(--card-bg);
-  border: 2px solid transparent;
-  border-radius: 6px;
-  padding: 8px;
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  transition: all 0.2s ease;
-  min-height: 140px;
-  position: relative;
+/* PDF Extractor Cards - GUARANTEED VISIBLE */
+.extractor-card {
+  background: var(--card-bg) !important;
+  border: 2px solid var(--border-color) !important;
+  border-radius: 8px !important;
+  padding: 10px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  cursor: pointer !important;
+  min-height: 160px !important;
+  position: relative !important;
+  transition: all 0.2s ease-in-out !important;
+  box-sizing: border-box !important;
 }
 
-.pdf-thumb-card:hover {
-  border-color: var(--accent);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+.extractor-card:hover {
+  border-color: var(--accent) !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
 }
 
-.pdf-thumb-card.selected {
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 15%, transparent);
-  box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 30%, transparent);
+.extractor-card.selected {
+  border-color: var(--accent) !important;
+  background: color-mix(in srgb, var(--accent) 20%, transparent) !important;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 40%, transparent) !important;
 }
 
-.pdf-thumb-card canvas {
+/* Canvas inside cards - EXPLICIT DIMENSIONS */
+.extractor-card canvas,
+.extractor-card .thumb-canvas {
+  max-width: 100% !important;
   width: 100% !important;
   height: auto !important;
-  display: block;
-  border-radius: 4px;
-  background: #ffffff;
+  max-height: 120px !important;
+  border-radius: 4px !important;
+  background: #ffffff !important;
+  display: block !important;
+  object-fit: contain !important;
 }
 
-.pdf-thumb-card .thumb-label {
-  margin-top: 8px;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text-secondary);
-  text-align: center;
+/* Page badge label */
+.extractor-card .page-badge {
+  color: var(--text-secondary) !important;
+  font-size: 12px !important;
+  margin-top: 6px !important;
+  font-weight: bold !important;
+  text-align: center !important;
 }
 
-.pdf-thumb-card.selected .thumb-label {
-  color: var(--accent);
-  font-weight: 600;
+.extractor-card.selected .page-badge {
+  color: var(--accent) !important;
 }
 
-.pdf-thumb-card .thumb-checkmark {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  background: var(--accent);
-  color: white;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  z-index: 2;
+/* Selection checkmark */
+.extractor-card .extractor-checkmark {
+  position: absolute !important;
+  top: 6px !important;
+  right: 6px !important;
+  background: var(--accent) !important;
+  color: white !important;
+  width: 24px !important;
+  height: 24px !important;
+  border-radius: 50% !important;
+  display: none !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 14px !important;
+  z-index: 2 !important;
 }
 
-.pdf-thumb-card.selected .thumb-checkmark {
-  display: flex;
+.extractor-card.selected .extractor-checkmark {
+  display: flex !important;
+}
+
+/* Render failure fallback */
+.extractor-card .render-fallback {
+  width: 100% !important;
+  height: 100px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: var(--bg-tertiary) !important;
+  border-radius: 4px !important;
+  color: var(--text-muted) !important;
+  font-size: 11px !important;
+  gap: 4px !important;
+}
+
+.extractor-card .render-fallback i {
+  font-size: 24px !important;
+  opacity: 0.5 !important;
 }
