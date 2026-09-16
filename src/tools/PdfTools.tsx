@@ -546,7 +546,7 @@ export const PdfExtractor: React.FC = () => {
   };
 
   // Render thumbnails for all pages
-  const renderThumbnails = async (pdfFile: File) => {
+  const renderThumbnails = async (pdfFile: File, existingBuffer?: ArrayBuffer) => {
     // Cancel any ongoing thumbnail generation
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -565,9 +565,14 @@ export const PdfExtractor: React.FC = () => {
       (window as any).pdfjsLib.GlobalWorkerOptions.workerSrc = 
         'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-      // CRITICAL: Clone the ArrayBuffer to prevent detachment issues
+      // CRITICAL: Use existing buffer if provided, otherwise read from file
       // When pdf-lib and pdfjsLib both process the same buffer, it can get detached
-      const arrayBuffer = await pdfFile.arrayBuffer();
+      let arrayBuffer: ArrayBuffer;
+      if (existingBuffer) {
+        arrayBuffer = existingBuffer.slice(0);
+      } else {
+        arrayBuffer = await pdfFile.arrayBuffer();
+      }
       const pdfJsBuffer = arrayBuffer.slice(0); // Clone for PDF.js
       const pdf = await (window as any).pdfjsLib.getDocument({ data: new Uint8Array(pdfJsBuffer) }).promise;
 
