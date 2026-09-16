@@ -557,11 +557,13 @@ export const PdfExtractor: React.FC = () => {
     setLoadingThumbnails(true);
 
     try {
+      // Import pdfjs-dist and set it on window object
       const pdfjsLib = await import('pdfjs-dist');
-      if ((window as any).pdfjsLib) {
-        (window as any).pdfjsLib.GlobalWorkerOptions.workerSrc = 
-          'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-      }
+      (window as any).pdfjsLib = pdfjsLib;
+      
+      // Set worker source
+      (window as any).pdfjsLib.GlobalWorkerOptions.workerSrc = 
+        'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
       // CRITICAL: Clone the ArrayBuffer to prevent detachment issues
       // When pdf-lib and pdfjsLib both process the same buffer, it can get detached
@@ -595,14 +597,24 @@ export const PdfExtractor: React.FC = () => {
     
     setFile(f);
     try {
+      // CRITICAL: Read ArrayBuffer ONCE - File.arrayBuffer() can only be read once!
+      const arrayBuffer = await f.arrayBuffer();
+      
       const { PDFDocument } = await import('pdf-lib');
-      const buf = await f.arrayBuffer();
-      const pdf = await PDFDocument.load(buf);
+      // Clone buffer for pdf-lib to prevent detachment
+      const pdfLibBuffer = arrayBuffer.slice(0);
+      const pdf = await PDFDocument.load(pdfLibBuffer);
       const pageCount = pdf.getPageCount();
       setNumPages(pageCount);
       
-      // Start rendering thumbnails
-      renderThumbnails(f);
+      // Wait for React to render the DOM before starting thumbnail generation
+      // Use requestAnimationFrame to ensure DOM is ready
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          // Pass the original ArrayBuffer to renderThumbnails
+          renderThumbnails(f, arrayBuffer);
+        }, 100); // Give extra time for DOM to be fully ready
+      });
     } catch (e) { 
       console.error('Invalid PDF:', e);
       alert('Invalid PDF'); 
