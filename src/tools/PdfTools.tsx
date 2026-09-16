@@ -374,16 +374,182 @@ export const PdfExtractor: React.FC = () => {
   const [numPages, setNumPages] = useState(0);
   const [pageRange, setPageRange] = useState('');
   const [extracting, setExtracting] = useState(false);
+  const [thumbnails, setThumbnails] = useState<string[]>([]);
+  const [selectedPages, setSelectedPages] = useState<Set<number>>(new Set());
+  const [loadingThumbnails, setLoadingThumbnails] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Parse page range string to array of page numbers (1-indexed)
+  const parsePageRange = (range: string, total: number): number[] => {
+    if (!range.trim()) return [];
+    const pages: number[] = [];
+    range.split(',').forEach(part => {
+      const trimmed = part.trim();
+      if (trimmed.includes('-')) {
+        const [start, end] = trimmed.split('-').map(Number);
+        if (!isNaN(start) && !isNaN(end)) {
+          for (let i = start; i <= Math.min(end, total); i++) {
+            if (i >= 1) pages.push(i);
+          }
+        }
+      } else {
+        const num = parseInt(trimmed);
+        if (!isNaN(num) && num >= 1 && num <= total) {
+          pages.push(num);
+        }
+      }
+    });
+    return [...new Set(pages)].sort((a, b) => a - b);
+  };
+
+  // Convert array of page numbers to range string
+  const pagesToRange = (pages: number[]): string => {
+    if (pages.length === 0) return '';
+    const sorted = [...pages].sort((a, b) => a - b);
+    const ranges: string[] = [];
+    let start = sorted[0];
+    let end = sorted[0];
+
+    for (let i = 1; i < sorted.length; i++) {
+      if (sorted[i] === end + 1) {
+        end = sorted[i];
+      } else {
+        if (start === end) {
+          ranges.push(start.toString());
+        } else {
+          ranges.push(`${start}-${end}`);
+        }
+        start = sorted[i];
+        end = sorted[i];
+      }
+    }
+    if (start === end) {
+      ranges.push(start.toString());
+    } else {
+      ranges.push(`${start}-${end}`);
+    }
+    return ranges.join(',');
+  };
+
+  // Render thumbnails for all pages
+  const renderThumbnails = async (pdfFile: File, totalPages: number) => {
+    // Cancel any ongoing thumbnail generation
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = new AbortController();
+    const signal = abortControllerRef.current.signal;
+
+    setLoadingThumbnails(true);
+    const thumbs: string[] = [];
+
+    try {
+      const pdfjsLib = await import('pdfjs-dist');
+      if ((window as any).pdfjsLib) {
+        (window as any).pdfjsLib.GlobalWorkerOptions.workerSrc = 
+          'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      }
+
+      const arrayBuffer = await pdfFile.arrayBuffer();
+      const typedArray = new Uint8Array(arrayBuffer);
+      const pdf = await (window as any).pdfjsLib.getDocument({  typedArray }).promise;
+
+      // Render each page at low scale for thumbnails
+      for (let i = 1; i <= totalPages; i++) {
+        if (signal.aborted) break;
+
+        const page = await pdf.getPage(i);
+        const viewport = page.getViewport({ scale: 0.3 }); // Lightweight scale
+        
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        if (!context) continue;
+
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+
+        await page.render({
+          canvasContext: context,
+          viewport: viewport
+        } as any).promise;
+
+        thumbs.push(canvas.toDataURL('image/jpeg', 0.7)); // Compressed JPEG for memory efficiency
+        
+        // Yield to main thread every 5 pages
+        if (i % 5 === 0) {
+          await new Promise(resolve => setTimeout(resolve, 0));
+        }
+      }
+
+      if (!signal.aborted) {
+        setThumbnails(thumbs);
+      }
+    } catch (error) {
+      if (!signal.aborted) {
+        console.error('Thumbnail generation failed:', error);
+      }
+    } finally {
+      setLoadingThumbnails(false);
+    }
+  };
 
   const handleFile = async (fl: FileList) => {
     const f = fl[0]; if (!f) return;
+    
+    // Reset state
+    setThumbnails([]);
+    setSelectedPages(new Set());
+    setPageRange('');
+    
     setFile(f);
     try {
       const { PDFDocument } = await import('pdf-lib');
       const buf = await f.arrayBuffer();
       const pdf = await PDFDocument.load(buf);
-      setNumPages(pdf.getPageCount());
-    } catch (e) { alert('Invalid PDF'); }
+      const pageCount = pdf.getPageCount();
+      setNumPages(pageCount);
+      
+      // Start rendering thumbnails
+      renderThumbnails(f, pageCount);
+    } catch (e) { 
+      console.error('Invalid PDF:', e);
+      alert('Invalid PDF'); 
+    }
+  };
+
+  // Toggle page selection
+  const togglePage = (pageNum: number) => {
+    setSelectedPages(prev => {
+      const next = new Set(prev);
+      if (next.has(pageNum)) {
+        next.delete(pageNum);
+      } else {
+        next.add(pageNum);
+      }
+      // Sync to range input
+      setPageRange(pagesToRange(Array.from(next)));
+      return next;
+    });
+  };
+
+  // Handle range input change - sync to thumbnails
+  const handleRangeChange = (value: string) => {
+    setPageRange(value);
+    const pages = parsePageRange(value, numPages);
+    setSelectedPages(new Set(pages));
+  };
+
+  // Cleanup on unmount or file change
+  const resetTool = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    setFile(null);
+    setNumPages(0);
+    setPageRange('');
+    setThumbnails([]);
+    setSelectedPages(new Set());
+    setLoadingThumbnails(false);
   };
 
   const extract = async () => {
@@ -422,15 +588,129 @@ export const PdfExtractor: React.FC = () => {
           <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
             <strong>{file.name}</strong> — {numPages} pages
           </p>
+
+          {/* Thumbnail Grid */}
+          {thumbnails.length > 0 && (
+            <div>
+              <label className="text-sm font-medium block mb-2" style={{ color: 'var(--text-secondary)' }}>
+                Click pages to select (or use range input below)
+              </label>
+              <div 
+                className="pdf-thumbnail-grid"
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))',
+                  gap: '12px',
+                  maxHeight: '400px',
+                  overflowY: 'auto',
+                  padding: '8px',
+                  borderRadius: '8px',
+                  background: 'var(--bg-tertiary)',
+                  border: '1px solid var(--border-color)'
+                }}
+              >
+                {thumbnails.map((thumb, idx) => {
+                  const pageNum = idx + 1;
+                  const isSelected = selectedPages.has(pageNum);
+                  return (
+                    <div
+                      key={idx}
+                      onClick={() => togglePage(pageNum)}
+                      className="pdf-thumbnail-card"
+                      style={{
+                        position: 'relative',
+                        cursor: 'pointer',
+                        borderRadius: '8px',
+                        overflow: 'hidden',
+                        border: isSelected ? '3px solid var(--accent)' : '2px solid var(--border-color)',
+                        background: isSelected ? 'color-mix(in srgb, var(--accent) 10%, transparent)' : 'var(--card-bg)',
+                        transition: 'all 0.2s ease',
+                        boxShadow: isSelected ? '0 0 12px color-mix(in srgb, var(--accent) 30%, transparent)' : 'none'
+                      }}
+                    >
+                      <img 
+                        src={thumb} 
+                        alt={`Page ${pageNum}`}
+                        style={{
+                          width: '100%',
+                          height: 'auto',
+                          display: 'block'
+                        }}
+                      />
+                      {/* Page number badge */}
+                      <div
+                        style={{
+                          position: 'absolute',
+                          top: '6px',
+                          left: '6px',
+                          background: isSelected ? 'var(--accent)' : 'rgba(0,0,0,0.7)',
+                          color: 'white',
+                          padding: '2px 8px',
+                          borderRadius: '4px',
+                          fontSize: '11px',
+                          fontWeight: '600'
+                        }}
+                      >
+                        Page {pageNum}
+                      </div>
+                      {/* Selection indicator */}
+                      {isSelected && (
+                        <div
+                          style={{
+                            position: 'absolute',
+                            top: '6px',
+                            right: '6px',
+                            background: 'var(--accent)',
+                            color: 'white',
+                            width: '24px',
+                            height: '24px',
+                            borderRadius: '50%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '14px'
+                          }}
+                        >
+                          <i className="fas fa-check"></i>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {loadingThumbnails && (
+            <div className="flex items-center gap-2 p-3 rounded-lg" style={{ background: 'var(--bg-tertiary)' }}>
+              <i className="fas fa-spinner fa-spin" style={{ color: 'var(--accent)' }}></i>
+              <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Generating page previews...</span>
+            </div>
+          )}
+
           <div>
             <label className="text-sm font-medium block mb-1" style={{ color: 'var(--text-secondary)' }}>
               Page range (e.g. 1,3,5-8)
             </label>
-            <input type="text" value={pageRange} onChange={e => setPageRange(e.target.value)} placeholder="1,3,5-8" className="input-field" />
+            <input 
+              type="text" 
+              value={pageRange} 
+              onChange={e => handleRangeChange(e.target.value)} 
+              placeholder="1,3,5-8" 
+              className="input-field" 
+            />
+            {selectedPages.size > 0 && (
+              <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                {selectedPages.size} page{selectedPages.size !== 1 ? 's' : ''} selected
+              </p>
+            )}
           </div>
+
           <div className="flex flex-wrap gap-2">
-            <Button onClick={extract} icon={extracting ? 'fa-spinner fa-spin' : 'fa-scissors'} disabled={extracting}>Extract Pages</Button>
-            <Button variant="secondary" onClick={() => { setFile(null); setNumPages(0); setPageRange(''); }} icon="fa-redo">Choose Another</Button>
+            <Button onClick={extract} icon={extracting ? 'fa-spinner fa-spin' : 'fa-scissors'} disabled={extracting || selectedPages.size === 0}>
+              Extract {selectedPages.size > 0 ? `${selectedPages.size} Page${selectedPages.size !== 1 ? 's' : ''}` : 'Pages'}
+            </Button>
+            <Button variant="secondary" onClick={resetTool} icon="fa-redo">Choose Another</Button>
           </div>
         </div>
       )}
