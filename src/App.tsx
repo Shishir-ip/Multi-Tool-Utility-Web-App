@@ -82,13 +82,44 @@ const ToolModules: Record<string, React.LazyExoticComponent<React.FC>> = {
 const VALID_TOOL_IDS = TOOLS.map(t => t.id);
 
 function parseHash(): { tool: string | null; category: string | null; isInvalid: boolean } {
+  // First check hash-based routing (existing behavior)
   const hash = window.location.hash.replace(/^#\/?/, '').trim();
-  if (!hash || hash === 'dashboard') return { tool: null, category: null, isInvalid: false };
-  if (VALID_TOOL_IDS.includes(hash)) return { tool: hash, category: null, isInvalid: false };
-  const decoded = decodeURIComponent(hash);
-  const cat = CATEGORIES.find(c => c.name === decoded);
-  if (cat) return { tool: null, category: cat.name, isInvalid: false };
-  // Invalid route - not a valid tool or category
+  
+  // If hash exists, use it
+  if (hash) {
+    if (hash === 'dashboard') return { tool: null, category: null, isInvalid: false };
+    if (VALID_TOOL_IDS.includes(hash)) return { tool: hash, category: null, isInvalid: false };
+    const decoded = decodeURIComponent(hash);
+    const cat = CATEGORIES.find(c => c.name === decoded);
+    if (cat) return { tool: null, category: cat.name, isInvalid: false };
+    return { tool: null, category: null, isInvalid: true };
+  }
+  
+  // If no hash, check pathname for path-based routing
+  const pathname = window.location.pathname.replace(/^\/+|\/+$/g, '').trim();
+  
+  // Empty pathname or root - show dashboard
+  if (!pathname || pathname === '') {
+    return { tool: null, category: null, isInvalid: false };
+  }
+  
+  // Check if pathname matches a valid tool
+  if (VALID_TOOL_IDS.includes(pathname)) {
+    // Redirect to hash-based URL for consistency
+    window.history.replaceState(null, '', `#/${pathname}`);
+    return { tool: pathname, category: null, isInvalid: false };
+  }
+  
+  // Check if pathname matches a category
+  const decodedPath = decodeURIComponent(pathname);
+  const cat = CATEGORIES.find(c => c.name === decodedPath);
+  if (cat) {
+    // Redirect to hash-based URL for consistency
+    window.history.replaceState(null, '', `#/${encodeURIComponent(cat.name)}`);
+    return { tool: null, category: cat.name, isInvalid: false };
+  }
+  
+  // Invalid route
   return { tool: null, category: null, isInvalid: true };
 }
 
@@ -136,18 +167,24 @@ function App() {
   }, [activeTool, activeCategory]);
 
   useEffect(() => {
-    const handleHashChange = () => {
+    const handleRouteChange = () => {
       const parsed = parseHash();
       setActiveTool(parsed.tool);
       setActiveCategory(parsed.category);
       setIsInvalidRoute(parsed.isInvalid);
       if (!parsed.tool) setSearchQuery('');
     };
-    window.addEventListener('hashchange', handleHashChange);
-    window.addEventListener('popstate', handleHashChange);
+    
+    // Listen to both hash changes and popstate (browser back/forward)
+    window.addEventListener('hashchange', handleRouteChange);
+    window.addEventListener('popstate', handleRouteChange);
+    
+    // Handle initial load for path-based URLs
+    handleRouteChange();
+    
     return () => {
-      window.removeEventListener('hashchange', handleHashChange);
-      window.removeEventListener('popstate', handleHashChange);
+      window.removeEventListener('hashchange', handleRouteChange);
+      window.removeEventListener('popstate', handleRouteChange);
     };
   }, []);
 
