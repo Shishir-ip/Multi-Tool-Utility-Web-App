@@ -370,14 +370,15 @@ export const PdfCompressor: React.FC = () => {
 
 // ── PDF Page Extractor ──
 export const PdfExtractor: React.FC = () => {
-  const [file, setFile] = useState<File | null>(null);
+  const [pages, setPages] = useState<string[]>([]);
   const [numPages, setNumPages] = useState(0);
   const [pageRange, setPageRange] = useState('');
   const [extracting, setExtracting] = useState(false);
   const [selectedPages, setSelectedPages] = useState<Set<number>>(new Set());
-  const [loadingThumbnails, setLoadingThumbnails] = useState(false);
-  const abortControllerRef = useRef<AbortController | null>(null);
-  const gridContainerRef = useRef<HTMLDivElement | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [progress, setProgress] = useState(0);
+  const fileRef = useRef<File | null>(null);
 
   // Parse page range string to array of page numbers (1-indexed)
   const parsePageRange = (range: string, total: number): number[] => {
@@ -432,15 +433,13 @@ export const PdfExtractor: React.FC = () => {
   };
 
   // Toggle page selection
-  const togglePageSelection = (card: HTMLElement, pageNum: number) => {
+  const togglePage = (pageNum: number) => {
     setSelectedPages(prev => {
       const next = new Set(prev);
       if (next.has(pageNum)) {
         next.delete(pageNum);
-        card.classList.remove('selected');
       } else {
         next.add(pageNum);
-        card.classList.add('selected');
       }
       // Sync to range input
       setPageRange(pagesToRange(Array.from(next)));
@@ -448,275 +447,260 @@ export const PdfExtractor: React.FC = () => {
     });
   };
 
-  // Synchronize range input from selected cards
-  const syncRangeInputFromCards = () => {
-    if (!gridContainerRef.current) return;
-    const selected: number[] = [];
-    gridContainerRef.current.querySelectorAll('.extractor-card.selected').forEach(card => {
-      const pageNum = parseInt(card.getAttribute('data-page') || '0');
-      if (pageNum > 0) selected.push(pageNum);
-    });
-    selected.sort((a, b) => a - b);
-    setSelectedPages(new Set(selected));
-    setPageRange(pagesToRange(selected));
+  // Handle range input change - sync to selected pages
+  const handleRangeChange = (value: string) => {
+    setPageRange(value);
+    const parsedPages = parsePageRange(value, numPages);
+    setSelectedPages(new Set(parsedPages));
   };
 
-  // Generate page thumbnails using foolproof two-step process:
-  // Step 1: SYNCHRONOUSLY create & mount all card shells (UI populates INSTANTLY)
-  // Step 2: ASYNCHRONOUSLY render PDF viewports onto mounted canvases
-  const generatePageThumbnails = async (pdf: any) => {
-    // Get grid by hardcoded ID - guaranteed to exist
-    const grid = document.getElementById('extractor-grid');
-    if (!grid) {
-      console.error("Critical Error: #extractor-grid element missing from DOM!");
+  // Load PDF and render pages (same approach as PDF to Image)
+  const loadPdf = (files: FileList) => {
+    const file = files[0];
+    if (!file) return;
+    
+    console.log('📄 PDF file selected:', file.name, 'Size:', file.size, 'bytes');
+    
+    // Validate file type
+    if (file.type !== 'application/pdf') {
+      console.error('❌ Invalid file type:', file.type);
+      setError('Please upload a valid PDF file.');
       return;
     }
 
-    grid.innerHTML = ''; // Reset container
-
-    const cardElements: Array<{ pageNum: number; canvas: HTMLCanvasElement; card: HTMLElement }> = [];
-
-    // ═══════════════════════════════════════════════════════════════
-    // STEP 1: Build & Mount ALL cards IMMEDIATELY (Synchronous)
-    // Cards appear instantly with page numbers visible
-    // ═══════════════════════════════════════════════════════════════
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const card = document.createElement('div');
-      card.className = 'extractor-card';
-      card.dataset.page = i.toString();
-
-      const canvas = document.createElement('canvas');
-      canvas.className = 'thumb-canvas';
-
-      const pageBadge = document.createElement('span');
-      pageBadge.className = 'page-badge';
-      pageBadge.textContent = `Page ${i}`;
-
-      const checkmark = document.createElement('div');
-      checkmark.className = 'extractor-checkmark';
-      checkmark.innerHTML = '<i class="fas fa-check"></i>';
-
-      card.appendChild(canvas);
-      card.appendChild(pageBadge);
-      card.appendChild(checkmark);
-
-      // Toggle selection logic on click
-      card.addEventListener('click', () => {
-        card.classList.toggle('selected');
-        syncRangeInputFromCards();
-      });
-
-      // MOUNT IMMEDIATELY - no waiting for canvas rendering
-      grid.appendChild(card);
-      cardElements.push({ pageNum: i, canvas, card });
-    }
-
-    // ═══════════════════════════════════════════════════════════════
-    // STEP 2: Asynchronously draw PDF viewports onto mounted canvases
-    // Cards remain visible even if rendering fails (fallback UI)
-    // ═══════════════════════════════════════════════════════════════
-    for (const item of cardElements) {
-      try {
-        const page = await pdf.getPage(item.pageNum);
-        const viewport = page.getViewport({ scale: 0.3 });
-        const ctx = item.canvas.getContext('2d');
-
-        if (!ctx) {
-          console.warn(`Could not get canvas context for page ${item.pageNum}`);
-          continue;
-        }
-
-        item.canvas.width = Math.floor(viewport.width);
-        item.canvas.height = Math.floor(viewport.height);
-
-        await page.render({ canvasContext: ctx, viewport: viewport }).promise;
-      } catch (renderError) {
-        // Fallback UI: show placeholder when rendering fails
-        console.warn(`Could not render page ${item.pageNum} canvas:`, renderError);
-        item.card.classList.add('render-failed');
-        const fallback = document.createElement('div');
-        fallback.className = 'render-fallback';
-        fallback.innerHTML = `<i class="fas fa-file-pdf"></i><span>Page ${item.pageNum}</span>`;
-        // Replace canvas with fallback
-        if (item.canvas.parentNode) {
-          item.canvas.parentNode.replaceChild(fallback, item.canvas);
-        }
-      }
-    }
-  };
-
-  // Render thumbnails for all pages
-  const renderThumbnails = async (pdfFile: File, existingBuffer?: ArrayBuffer) => {
-    // Cancel any ongoing thumbnail generation
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    abortControllerRef.current = new AbortController();
-    const signal = abortControllerRef.current.signal;
-
-    setLoadingThumbnails(true);
-
-    try {
-      // Import pdfjs-dist and set it on window object
-      const pdfjsLib = await import('pdfjs-dist');
-      (window as any).pdfjsLib = pdfjsLib;
-      
-      // Set worker source
-      (window as any).pdfjsLib.GlobalWorkerOptions.workerSrc = 
-        'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-
-      // CRITICAL: Use existing buffer if provided, otherwise read from file
-      // When pdf-lib and pdfjsLib both process the same buffer, it can get detached
-      let arrayBuffer: ArrayBuffer;
-      if (existingBuffer) {
-        arrayBuffer = existingBuffer.slice(0);
-      } else {
-        arrayBuffer = await pdfFile.arrayBuffer();
-      }
-      const pdfJsBuffer = arrayBuffer.slice(0); // Clone for PDF.js
-      const pdf = await (window as any).pdfjsLib.getDocument({ data: new Uint8Array(pdfJsBuffer) }).promise;
-
-      if (!signal.aborted) {
-        await generatePageThumbnails(pdf);
-      }
-    } catch (error) {
-      if (!signal.aborted) {
-        console.error('Thumbnail generation failed:', error);
-      }
-    } finally {
-      if (!signal.aborted) {
-        setLoadingThumbnails(false);
-      }
-    }
-  };
-
-  const handleFile = async (fl: FileList) => {
-    const f = fl[0]; if (!f) return;
-    
-    // Reset state
-    if (gridContainerRef.current) {
-      gridContainerRef.current.innerHTML = '';
-    }
+    fileRef.current = file;
+    setLoading(true);
+    setError(null);
+    setProgress(0);
+    setPages([]);
     setSelectedPages(new Set());
     setPageRange('');
-    
-    setFile(f);
-    try {
-      // CRITICAL: Read ArrayBuffer ONCE - File.arrayBuffer() can only be read once!
-      const arrayBuffer = await f.arrayBuffer();
-      
-      const { PDFDocument } = await import('pdf-lib');
-      // Clone buffer for pdf-lib to prevent detachment
-      const pdfLibBuffer = arrayBuffer.slice(0);
-      const pdf = await PDFDocument.load(pdfLibBuffer);
-      const pageCount = pdf.getPageCount();
-      setNumPages(pageCount);
-      
-      // Wait for React to render the DOM before starting thumbnail generation
-      // Use requestAnimationFrame to ensure DOM is ready
-      requestAnimationFrame(() => {
-        setTimeout(() => {
-          // Pass the original ArrayBuffer to renderThumbnails
-          renderThumbnails(f, arrayBuffer);
-        }, 100); // Give extra time for DOM to be fully ready
-      });
-    } catch (e) { 
-      console.error('Invalid PDF:', e);
-      alert('Invalid PDF'); 
-    }
-  };
 
-  // Handle range input change - sync to thumbnails
-  const handleRangeChange = (value: string) => {
-    setPageRange(value);
-    const pages = parsePageRange(value, numPages);
-    setSelectedPages(new Set(pages));
+    // Set up PDF.js worker
+    console.log('🔧 Setting up PDF.js worker...');
+    if ((window as any).pdfjsLib) {
+      (window as any).pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    } else {
+      console.error('❌ pdfjsLib not found on window object!');
+      setError('PDF.js library failed to load. Please refresh the page.');
+      setLoading(false);
+      return;
+    }
+
+    // Read file with FileReader
+    const fileReader = new FileReader();
     
-    // Update DOM cards to match selection
-    const grid = document.getElementById('extractor-grid');
-    if (grid) {
-      const cards = grid.querySelectorAll('.extractor-card');
-      cards.forEach((card) => {
-        const pageNum = parseInt(card.getAttribute('data-page') || '0');
-        if (pages.includes(pageNum)) {
-          card.classList.add('selected');
-        } else {
-          card.classList.remove('selected');
+    fileReader.onload = async function() {
+      try {
+        const typedarray = new Uint8Array(this.result as ArrayBuffer);
+        console.log('✅ PDF ArrayBuffer loaded. Byte length:', typedarray.length);
+
+        const loadingTask = (window as any).pdfjsLib.getDocument({ data: typedarray });
+        const pdf = await loadingTask.promise;
+        console.log('✅ PDF parsed successfully! Total pages:', pdf.numPages);
+        
+        const totalPages = pdf.numPages;
+        setNumPages(totalPages);
+        const imgs: string[] = [];
+
+        // Render each page sequentially
+        for (let i = 1; i <= totalPages; i++) {
+          console.log(`📄 Rendering page ${i} of ${totalPages}...`);
+          const page = await pdf.getPage(i);
+          
+          // Use high-DPI scale for crisp output
+          const viewport = page.getViewport({ scale: 2.0 });
+          
+          // Create off-screen canvas
+          const canvas = document.createElement('canvas');
+          const context = canvas.getContext('2d');
+          
+          if (!context) {
+            throw new Error('Failed to get canvas context');
+          }
+
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+
+          // Render PDF page to canvas
+          await page.render({
+            canvasContext: context,
+            viewport: viewport
+          } as any).promise;
+
+          // Convert canvas to PNG data URL
+          const dataUrl = canvas.toDataURL('image/png');
+          imgs.push(dataUrl);
+          console.log(`✅ Page ${i} rendered successfully`);
+
+          // Update progress
+          setProgress(Math.round((i / totalPages) * 100));
+
+          // Clean up canvas to free memory
+          canvas.width = 0;
+          canvas.height = 0;
         }
+
+        console.log('🎉 All pages rendered successfully!');
+        setPages(imgs);
+      } catch (error) {
+        console.error('❌ CRITICAL PDF.JS ERROR:', error);
+        setError('Failed to load PDF. The file may be encrypted, corrupted, or invalid.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fileReader.onerror = () => {
+      console.error('❌ FileReader Error:', fileReader.error);
+      setError('Failed to read the file. Please try again.');
+      setLoading(false);
+    };
+
+    fileReader.readAsArrayBuffer(file);
+  };
+
+  // Download single page as PDF
+  const downloadPageAsPdf = async (pageDataUrl: string, pageNum: number) => {
+    if (!fileRef.current) return;
+    
+    try {
+      const { jsPDF } = await import('jspdf');
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'pt',
+        format: 'a4'
       });
+      
+      const img = new Image();
+      img.src = pageDataUrl;
+      await new Promise(resolve => { img.onload = resolve; });
+      
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = img.width;
+      const imgHeight = img.height;
+      
+      // Calculate scaling to fit page
+      const scale = Math.min(pageWidth / imgWidth, pageHeight / imgHeight);
+      const scaledWidth = imgWidth * scale;
+      const scaledHeight = imgHeight * scale;
+      
+      // Center image on page
+      const x = (pageWidth - scaledWidth) / 2;
+      const y = (pageHeight - scaledHeight) / 2;
+      
+      pdf.addImage(pageDataUrl, 'PNG', x, y, scaledWidth, scaledHeight);
+      pdf.save(`page-${pageNum}.pdf`);
+    } catch (error) {
+      console.error('Failed to download page:', error);
+      alert('Failed to download page as PDF');
     }
   };
 
-  // Cleanup on unmount or file change
+  // Reset tool
   const resetTool = () => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    if (gridContainerRef.current) {
-      gridContainerRef.current.innerHTML = '';
-    }
-    setFile(null);
+    setPages([]);
     setNumPages(0);
     setPageRange('');
     setSelectedPages(new Set());
-    setLoadingThumbnails(false);
+    setError(null);
+    setProgress(0);
+    fileRef.current = null;
   };
 
+  // Extract selected pages
   const extract = async () => {
-    if (!file || !pageRange.trim()) return;
+    if (!fileRef.current || selectedPages.size === 0) return;
     setExtracting(true);
     try {
       const { PDFDocument } = await import('pdf-lib');
-      const buf = await file.arrayBuffer();
+      const buf = await fileRef.current.arrayBuffer();
       const src = await PDFDocument.load(buf);
       const out = await PDFDocument.create();
-      const indices = pageRange.split(',').flatMap(part => {
-        const trimmed = part.trim();
-        if (trimmed.includes('-')) {
-          const [s, e] = trimmed.split('-').map(Number);
-          return Array.from({ length: e - s + 1 }, (_, i) => s + i - 1);
-        }
-        return [parseInt(trimmed) - 1];
-      }).filter(i => i >= 0 && i < numPages);
-      const pages = await out.copyPages(src, indices);
-      pages.forEach(p => out.addPage(p));
+      const indices = Array.from(selectedPages).map(p => p - 1);
+      const extractedPages = await out.copyPages(src, indices);
+      extractedPages.forEach(p => out.addPage(p));
       const bytes = await out.save();
       const blob = new Blob([bytes.buffer as ArrayBuffer], { type: 'application/pdf' });
       const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob); a.download = `extracted-${file.name}`; a.click();
-    } catch (e) { alert('Extraction failed'); }
+      a.href = URL.createObjectURL(blob);
+      a.download = `extracted-${fileRef.current.name}`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    } catch (e) {
+      console.error('Extraction failed:', e);
+      alert('Extraction failed');
+    }
     setExtracting(false);
   };
 
   return (
     <div className="tool-container">
       <ToolHeader icon="fa-scissors" title="PDF Page Extractor" description="Extract specific pages from a PDF" color="#ef4444" />
-      {!file ? (
-        <DropZone onFiles={handleFile} accept=".pdf" icon="fa-file-pdf" title="Upload a PDF" />
+      {pages.length === 0 ? (
+        <div className="space-y-4">
+          <DropZone onFiles={loadPdf} accept=".pdf" icon="fa-file-pdf" title="Upload a PDF" subtitle="Each page will be rendered for preview" />
+          
+          {error && (
+            <div className="p-4 rounded-lg" style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid #ef4444' }}>
+              <p className="text-sm" style={{ color: '#ef4444' }}>
+                <i className="fas fa-exclamation-circle mr-2"></i>
+                {error}
+              </p>
+            </div>
+          )}
+
+          {loading && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Processing PDF...</span>
+                <span className="text-sm font-medium" style={{ color: 'var(--accent)' }}>{progress}%</span>
+              </div>
+              <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: 'var(--bg-tertiary)' }}>
+                <div 
+                  className="h-full rounded-full transition-all duration-300" 
+                  style={{ width: `${progress}%`, background: 'var(--accent)' }}
+                />
+              </div>
+            </div>
+          )}
+        </div>
       ) : (
         <div className="space-y-4">
-          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-            <strong>{file.name}</strong> — {numPages} pages
-          </p>
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+              <i className="fas fa-check-circle mr-1" style={{ color: '#10b981' }}></i>
+              Successfully rendered {pages.length} page{pages.length !== 1 ? 's' : ''}
+            </p>
+          </div>
 
-          {/* Thumbnail Grid Container - hardcoded ID for guaranteed DOM access */}
           <div>
             <label className="text-sm font-medium block mb-2" style={{ color: 'var(--text-secondary)' }}>
               Click pages to select (or use range input below)
             </label>
-            <div 
-              ref={gridContainerRef}
-              id="extractor-grid"
-              className="extractor-grid-container"
-            />
-          </div>
-
-          {loadingThumbnails && (
-            <div className="flex items-center gap-2 p-3 rounded-lg" style={{ background: 'var(--bg-tertiary)' }}>
-              <i className="fas fa-spinner fa-spin" style={{ color: 'var(--accent)' }}></i>
-              <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Generating page previews...</span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {pages.map((pageDataUrl, i) => {
+                const pageNum = i + 1;
+                const isSelected = selectedPages.has(pageNum);
+                return (
+                  <div key={i} className="border rounded-lg overflow-hidden" style={{ borderColor: isSelected ? 'var(--accent)' : 'var(--border-color)', borderWidth: isSelected ? '2px' : '1px' }}>
+                    <img src={pageDataUrl} alt={`Page ${pageNum}`} className="w-full cursor-pointer" onClick={() => togglePage(pageNum)} />
+                    <div className="p-2 flex justify-between items-center" style={{ background: 'var(--bg-tertiary)' }}>
+                      <span className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>Page {pageNum}</span>
+                      <button 
+                        onClick={() => downloadPageAsPdf(pageDataUrl, pageNum)} 
+                        className="text-xs px-2 py-1 rounded flex items-center gap-1" 
+                        style={{ background: 'var(--accent)', color: 'white' }}
+                      >
+                        <i className="fas fa-download"></i> Download
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          )}
+          </div>
 
           <div>
             <label className="text-sm font-medium block mb-1" style={{ color: 'var(--text-secondary)' }}>
