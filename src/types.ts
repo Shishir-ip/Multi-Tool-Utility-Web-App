@@ -33,11 +33,6 @@ export const TOOLS: Tool[] = [
   { id: 'pdf-compressor', name: 'PDF Compressor', category: 'PDF & Document Tools', description: 'Reduce PDF file size', icon: 'fa-compress', keywords: ['pdf','compress','reduce','size'] },
   { id: 'pdf-extractor', name: 'PDF Page Extractor', category: 'PDF & Document Tools', description: 'Extract specific pages from PDF', icon: 'fa-scissors', keywords: ['pdf','extract','pages','split'] },
   { id: 'pdf-reorderer', name: 'PDF Page Reorderer', category: 'PDF & Document Tools', description: 'Rearrange pages in a PDF', icon: 'fa-arrows-alt', keywords: ['pdf','reorder','rearrange','pages'] },
-  { id: 'docx-to-pdf', name: 'DOCX to PDF', category: 'PDF & Document Tools', description: 'Convert Word documents to PDF', icon: 'fa-file-word', keywords: ['docx','pdf','word','convert','document'] },
-  { id: 'pptx-to-pdf', name: 'PPTX to PDF', category: 'PDF & Document Tools', description: 'Convert PowerPoint to PDF', icon: 'fa-file-powerpoint', keywords: ['pptx','pdf','powerpoint','convert','slides'] },
-  { id: 'pdf-to-docx', name: 'PDF to DOCX', category: 'PDF & Document Tools', description: 'Convert PDF to Word document', icon: 'fa-file-export', keywords: ['pdf','docx','word','convert'] },
-  { id: 'pdf-to-pptx', name: 'PDF to PPTX', category: 'PDF & Document Tools', description: 'Convert PDF to PowerPoint', icon: 'fa-file-video', keywords: ['pdf','pptx','powerpoint','convert','slides'] },
-  { id: 'pptx-presenter', name: 'PPTX Presenter', category: 'PDF & Document Tools', description: 'Present PowerPoint files interactively', icon: 'fa-presentation-screen', keywords: ['pptx','present','slides','powerpoint','viewer'] },
 
   // ── Image & Design Suite ──
   { id: 'image-resizer', name: 'Image Resizer', category: 'Image & Design Suite', description: 'Resize images with aspect ratio lock', icon: 'fa-expand', keywords: ['image','resize','scale','dimensions'] },
