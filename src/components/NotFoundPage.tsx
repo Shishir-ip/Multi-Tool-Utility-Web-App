@@ -2,7 +2,9 @@ import React from 'react';
 
 export const NotFoundPage: React.FC = () => {
   const goHome = () => {
-    window.location.hash = '#/dashboard';
+    window.history.pushState({}, '', '/');
+    // Dispatch popstate so the app re-renders
+    window.dispatchEvent(new PopStateEvent('popstate'));
   };
 
   const goBack = () => {
