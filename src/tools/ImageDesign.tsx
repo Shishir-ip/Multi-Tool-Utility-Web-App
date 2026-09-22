@@ -62,6 +62,334 @@ export const ImageConverter: React.FC = () => {
   );
 };
 
+// ── Basic Video Editor (Trim, Crop, Aspect Ratio) ──
+export const BasicEditor: React.FC = () => {
+  const [video, setVideo] = useState<{ url: string; name: string } | null>(null);
+  const [duration, setDuration] = useState(0);
+  const [startTime, setStartTime] = useState(0);
+  const [endTime, setEndTime] = useState(0);
+  const [aspectRatio, setAspectRatio] = useState('original');
+  const [crop, setCrop] = useState({ x: 0, y: 0, width: 100, height: 100 });
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  const handleFile = (fl: FileList) => {
+    const f = fl[0];
+    if (!f || !f.type.startsWith('video/')) return;
+    
+    const url = URL.createObjectURL(f);
+    setVideo({ url, name: f.name.replace(/\.[^.]+$/, '') });
+    
+    const tempVideo = document.createElement('video');
+    tempVideo.src = url;
+    tempVideo.onloadedmetadata = () => {
+      setDuration(tempVideo.duration);
+      setStartTime(0);
+      setEndTime(tempVideo.duration);
+    };
+  };
+
+  const formatTime = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const getAspectRatioDimensions = (originalWidth: number, originalHeight: number) => {
+    if (aspectRatio === 'original') {
+      return { width: originalWidth, height: originalHeight };
+    }
+    
+    const [w, h] = aspectRatio.split(':').map(Number);
+    const ratio = w / h;
+    
+    if (originalWidth / originalHeight > ratio) {
+      return { width: originalHeight * ratio, height: originalHeight };
+    } else {
+      return { width: originalWidth, height: originalWidth / ratio };
+    }
+  };
+
+  const processVideo = async () => {
+    if (!video || !videoRef.current || !canvasRef.current) return;
+    
+    setIsProcessing(true);
+    setProgress(0);
+
+    const videoEl = videoRef.current;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d')!;
+
+    // Set canvas dimensions based on aspect ratio
+    const { width: canvasWidth, height: canvasHeight } = getAspectRatioDimensions(
+      videoEl.videoWidth * (crop.width / 100),
+      videoEl.videoHeight * (crop.height / 100)
+    );
+    
+    canvas.width = canvasWidth;
+    canvas.height = canvasHeight;
+
+    // Create a MediaRecorder to capture the canvas
+    const stream = canvas.captureStream(30);
+    const recorder = new MediaRecorder(stream, {
+      mimeType: 'video/webm;codecs=vp9',
+      videoBitsPerSecond: 2500000
+    });
+
+    const chunks: Blob[] = [];
+    recorder.ondataavailable = (e) => {
+      if (e.data.size > 0) chunks.push(e.data);
+    };
+
+    recorder.onstop = () => {
+      const blob = new Blob(chunks, { type: 'video/webm' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${video.name}-edited.webm`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setIsProcessing(false);
+      setProgress(100);
+    };
+
+    recorder.start();
+
+    // Process video frame by frame
+    videoEl.currentTime = startTime;
+    videoEl.muted = true;
+
+    const processFrame = () => {
+      if (videoEl.currentTime >= endTime) {
+        recorder.stop();
+        stream.getTracks().forEach(track => track.stop());
+        return;
+      }
+
+      // Draw cropped frame
+      const sx = videoEl.videoWidth * (crop.x / 100);
+      const sy = videoEl.videoHeight * (crop.y / 100);
+      const sWidth = videoEl.videoWidth * (crop.width / 100);
+      const sHeight = videoEl.videoHeight * (crop.height / 100);
+
+      ctx.drawImage(videoEl, sx, sy, sWidth, sHeight, 0, 0, canvas.width, canvas.height);
+
+      // Update progress
+      const progress = ((videoEl.currentTime - startTime) / (endTime - startTime)) * 100;
+      setProgress(Math.min(progress, 100));
+
+      requestAnimationFrame(processFrame);
+    };
+
+    videoEl.onseeked = () => {
+      videoEl.play();
+      processFrame();
+    };
+  };
+
+  const reset = () => {
+    setVideo(null);
+    setDuration(0);
+    setStartTime(0);
+    setEndTime(0);
+    setAspectRatio('original');
+    setCrop({ x: 0, y: 0, width: 100, height: 100 });
+    setIsProcessing(false);
+    setProgress(0);
+  };
+
+  return (
+    <div className="tool-container">
+      <ToolHeader icon="fa-film" title="Basic Editor" description="Video trimmer, cropper, and aspect ratio changer" color="#8b5cf6" />
+      
+      {!video ? (
+        <DropZone onFiles={handleFile} accept="video/*" icon="fa-video" title="Upload a video" subtitle="MP4, WEBM, MOV supported" />
+      ) : (
+        <div className="space-y-6">
+          {/* Video Preview */}
+          <div className="relative bg-black rounded-lg overflow-hidden">
+            <video
+              ref={videoRef}
+              src={video.url}
+              className="w-full max-h-96"
+              controls
+              onTimeUpdate={(e) => {
+                const time = e.currentTarget.currentTime;
+                if (time >= endTime) {
+                  e.currentTarget.pause();
+                  e.currentTarget.currentTime = startTime;
+                }
+              }}
+            />
+          </div>
+
+          {/* Trim Controls */}
+          <div className="space-y-4">
+            <h3 className="font-semibold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+              <i className="fas fa-cut" style={{ color: '#8b5cf6' }}></i>
+              Trim Video
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium block mb-2" style={{ color: 'var(--text-secondary)' }}>
+                  Start Time: {formatTime(startTime)}
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max={duration}
+                  step="0.1"
+                  value={startTime}
+                  onChange={(e) => {
+                    const val = parseFloat(e.target.value);
+                    setStartTime(val);
+                    if (videoRef.current) videoRef.current.currentTime = val;
+                  }}
+                  className="w-full"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium block mb-2" style={{ color: 'var(--text-secondary)' }}>
+                  End Time: {formatTime(endTime)}
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max={duration}
+                  step="0.1"
+                  value={endTime}
+                  onChange={(e) => {
+                    const val = parseFloat(e.target.value);
+                    setEndTime(val);
+                    if (videoRef.current) videoRef.current.currentTime = val;
+                  }}
+                  className="w-full"
+                />
+              </div>
+            </div>
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+              Duration: {formatTime(endTime - startTime)}
+            </p>
+          </div>
+
+          {/* Crop Controls */}
+          <div className="space-y-4">
+            <h3 className="font-semibold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+              <i className="fas fa-crop-alt" style={{ color: '#8b5cf6' }}></i>
+              Crop Video
+            </h3>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div>
+                <label className="text-xs font-medium block mb-1" style={{ color: 'var(--text-secondary)' }}>X: {crop.x}%</label>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={crop.x}
+                  onChange={(e) => setCrop({ ...crop, x: parseInt(e.target.value) })}
+                  className="w-full"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium block mb-1" style={{ color: 'var(--text-secondary)' }}>Y: {crop.y}%</label>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={crop.y}
+                  onChange={(e) => setCrop({ ...crop, y: parseInt(e.target.value) })}
+                  className="w-full"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium block mb-1" style={{ color: 'var(--text-secondary)' }}>Width: {crop.width}%</label>
+                <input
+                  type="range"
+                  min="10"
+                  max="100"
+                  value={crop.width}
+                  onChange={(e) => setCrop({ ...crop, width: parseInt(e.target.value) })}
+                  className="w-full"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium block mb-1" style={{ color: 'var(--text-secondary)' }}>Height: {crop.height}%</label>
+                <input
+                  type="range"
+                  min="10"
+                  max="100"
+                  value={crop.height}
+                  onChange={(e) => setCrop({ ...crop, height: parseInt(e.target.value) })}
+                  className="w-full"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Aspect Ratio */}
+          <div className="space-y-4">
+            <h3 className="font-semibold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+              <i className="fas fa-expand" style={{ color: '#8b5cf6' }}></i>
+              Aspect Ratio
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              {['original', '16:9', '4:3', '1:1', '9:16', '21:9'].map(ratio => (
+                <button
+                  key={ratio}
+                  onClick={() => setAspectRatio(ratio)}
+                  className="px-4 py-2 rounded-lg text-sm font-medium transition-all"
+                  style={{
+                    background: aspectRatio === ratio ? '#8b5cf6' : 'var(--bg-tertiary)',
+                    color: aspectRatio === ratio ? 'white' : 'var(--text-primary)',
+                    border: `2px solid ${aspectRatio === ratio ? '#8b5cf6' : 'var(--border-color)'}`
+                  }}
+                >
+                  {ratio === 'original' ? 'Original' : ratio}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Progress Bar */}
+          {isProcessing && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Processing video...</span>
+                <span className="text-sm font-medium" style={{ color: 'var(--accent)' }}>{Math.round(progress)}%</span>
+              </div>
+              <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: 'var(--bg-tertiary)' }}>
+                <div
+                  className="h-full rounded-full transition-all duration-300"
+                  style={{ width: `${progress}%`, background: 'var(--accent)' }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Action Buttons */}
+          <div className="flex flex-wrap gap-2">
+            <Button
+              onClick={processVideo}
+              icon={isProcessing ? 'fa-spinner fa-spin' : 'fa-download'}
+              disabled={isProcessing}
+            >
+              {isProcessing ? 'Processing...' : 'Export Video'}
+            </Button>
+            <Button variant="secondary" onClick={reset} icon="fa-redo">
+              Upload New Video
+            </Button>
+          </div>
+
+          {/* Hidden Canvas for Processing */}
+          <canvas ref={canvasRef} className="hidden" />
+        </div>
+      )}
+    </div>
+  );
+};
+
 // ── Advanced Image Cropper ──
 export const ImageCropper: React.FC = () => {
   const [image, setImage] = useState<string | null>(null);
