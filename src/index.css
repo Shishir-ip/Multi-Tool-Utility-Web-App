@@ -21,6 +21,25 @@ body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   transition: background-color var(--transition-speed), color var(--transition-speed);
   overflow-x: hidden;
+  background: var(--bg-primary);
+}
+
+/* Dark mode body background with slight transparency */
+.dark body {
+  background: linear-gradient(
+    180deg,
+    var(--bg-primary) 0%,
+    color-mix(in srgb, var(--bg-primary) 85%, transparent) 100%
+  );
+}
+
+/* Light mode body background with slight transparency */
+.light body {
+  background: linear-gradient(
+    180deg,
+    var(--bg-primary) 0%,
+    color-mix(in srgb, var(--bg-primary) 90%, transparent) 100%
+  );
 }
 
 /* Light Theme */
@@ -166,6 +185,9 @@ body {
   padding: 16px;
   padding-top: 24px;
   transition: margin-left var(--transition-speed) ease;
+  position: relative;
+  z-index: 1;
+  background: transparent;
 }
 
 @media (min-width: 640px) {
@@ -435,21 +457,21 @@ body {
   position: fixed;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
+  width: 100vw;
+  height: 100vh;
   pointer-events: none;
   z-index: 0;
-  opacity: 0.03;
+  opacity: 0.4;
   background-image: 
-    linear-gradient(var(--text-muted) 1px, transparent 1px),
-    linear-gradient(90deg, var(--text-muted) 1px, transparent 1px);
-  background-size: 40px 40px;
-  mask-image: radial-gradient(ellipse 80% 50% at 50% 50%, black 40%, transparent 100%);
-  -webkit-mask-image: radial-gradient(ellipse 80% 50% at 50% 50%, black 40%, transparent 100%);
+    linear-gradient(var(--border-color) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border-color) 1px, transparent 1px);
+  background-size: 50px 50px;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 50%, black 30%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 50%, black 30%, transparent 100%);
 }
 
 .light .grid-pattern-bg {
-  opacity: 0.05;
+  opacity: 0.5;
 }
 
 /* Ensure main content is above grid */

@@ -235,7 +235,7 @@ function App() {
   const ActiveToolComponent = activeTool ? ToolModules[activeTool] : null;
 
   return (
-    <div className={`min-h-screen ${darkMode ? 'dark' : 'light'}`} style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
+    <div className={`min-h-screen ${darkMode ? 'dark' : 'light'}`} style={{ background: 'transparent', color: 'var(--text-primary)' }}>
       {/* Interactive Grid Pattern Background */}
       <div className="grid-pattern-bg" />
       
