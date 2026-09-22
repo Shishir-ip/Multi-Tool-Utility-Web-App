@@ -16,13 +16,13 @@ export interface Category {
 
 export const CATEGORIES: Category[] = [
   { id: 'pdf-document', name: 'PDF & Document Tools', icon: 'fa-file-pdf', color: '#ef4444' },
-  { id: 'image-design', name: 'Image & Design Suite', icon: 'fa-palette', color: '#8b5cf6' },
-  { id: 'developer', name: 'Developer & Coding', icon: 'fa-laptop-code', color: '#10b981' },
+  { id: 'image-design', name: 'Image & Design Suite', icon: 'fa-images', color: '#8b5cf6' },
+  { id: 'developer', name: 'Developer & Coding', icon: 'fa-code', color: '#10b981' },
   { id: 'student', name: 'Student & Academic', icon: 'fa-graduation-cap', color: '#f59e0b' },
   { id: 'finance', name: 'Finance & Business', icon: 'fa-coins', color: '#06b6d4' },
   { id: 'time', name: 'Time & Productivity', icon: 'fa-clock', color: '#ec4899' },
   { id: 'calculators', name: 'Calculators & Converters', icon: 'fa-calculator', color: '#3b82f6' },
-  { id: 'security', name: 'Security & Utilities', icon: 'fa-shield-halved', color: '#6366f1' },
+  { id: 'security', name: 'Security & Utilities', icon: 'fa-shield-alt', color: '#6366f1' },
 ];
 
 export const TOOLS: Tool[] = [
