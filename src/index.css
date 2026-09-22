@@ -414,14 +414,19 @@ body {
   }
 }
 
-/* Drop Zone — responsive padding */
+/* Drop Zone - Modern 3D Card Effect */
 .drop-zone {
+  position: relative;
   border: 2px dashed var(--border-color);
-  border-radius: 12px;
+  border-radius: 16px;
   padding: 24px 16px;
   text-align: center;
-  transition: all 0.2s;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
+  background: var(--card-bg);
+  overflow: hidden;
+  transform-style: preserve-3d;
+  perspective: 1000px;
 }
 
 @media (min-width: 640px) {
@@ -430,9 +435,152 @@ body {
   }
 }
 
-.drop-zone:hover, .drop-zone.active {
+/* 3D Card Effect - Hover State */
+.drop-zone:hover {
   border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 5%, transparent);
+  transform: translateY(-4px) rotateX(2deg);
+  box-shadow: 
+    0 20px 40px rgba(0, 0, 0, 0.1),
+    0 0 0 1px var(--accent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* Active/Drag State */
+.drop-zone.active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--card-bg));
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 
+    0 15px 30px rgba(59, 130, 246, 0.2),
+    0 0 0 2px var(--accent);
+}
+
+/* Grid Pattern Background */
+.drop-zone::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: 
+    linear-gradient(var(--border-color) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border-color) 1px, transparent 1px);
+  background-size: 30px 30px;
+  opacity: 0.3;
+  mask-image: radial-gradient(ellipse at center, black 30%, transparent 70%);
+  -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 70%);
+  pointer-events: none;
+  transition: opacity 0.4s;
+}
+
+.drop-zone:hover::before {
+  opacity: 0.5;
+}
+
+/* Glowing Border Effect */
+.drop-zone::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 16px;
+  padding: 2px;
+  background: linear-gradient(
+    135deg,
+    transparent 0%,
+    transparent 40%,
+    var(--accent) 50%,
+    transparent 60%,
+    transparent 100%
+  );
+  background-size: 300% 300%;
+  background-position: 100% 100%;
+  transition: background-position 0.6s;
+  -webkit-mask: 
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.drop-zone:hover::after {
+  opacity: 1;
+  background-position: 0% 0%;
+  animation: border-glow 3s linear infinite;
+}
+
+@keyframes border-glow {
+  0% {
+    background-position: 0% 0%;
+  }
+  100% {
+    background-position: 300% 300%;
+  }
+}
+
+/* Content Wrapper */
+.drop-zone-content {
+  position: relative;
+  z-index: 1;
+}
+
+/* Icon Container */
+.drop-zone-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+  color: white;
+  font-size: 24px;
+  margin-bottom: 16px;
+  box-shadow: 0 8px 16px rgba(59, 130, 246, 0.3);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (min-width: 640px) {
+  .drop-zone-icon {
+    width: 64px;
+    height: 64px;
+    font-size: 28px;
+  }
+}
+
+.drop-zone:hover .drop-zone-icon {
+  transform: translateY(-4px) scale(1.1);
+  box-shadow: 0 12px 24px rgba(59, 130, 246, 0.4);
+}
+
+/* Text Styles */
+.drop-zone-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+  transition: color 0.3s;
+}
+
+@media (min-width: 640px) {
+  .drop-zone-title {
+    font-size: 16px;
+  }
+}
+
+.drop-zone-subtitle {
+  font-size: 13px;
+  color: var(--text-muted);
+  transition: color 0.3s;
+}
+
+@media (min-width: 640px) {
+  .drop-zone-subtitle {
+    font-size: 14px;
+  }
+}
+
+.drop-zone:hover .drop-zone-title {
+  color: var(--accent);
 }
 
 /* Inputs — responsive */

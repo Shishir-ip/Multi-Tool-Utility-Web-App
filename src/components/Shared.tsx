@@ -62,9 +62,13 @@ export const DropZone: React.FC<DropZoneProps> = ({
           if (fileRef.current) fileRef.current.value = '';
         }}
       />
-      <i className={`fas ${icon} text-3xl sm:text-4xl mb-3`} style={{ color: 'var(--accent)' }}></i>
-      <p className="font-medium text-sm sm:text-base" style={{ color: 'var(--text-primary)' }}>{title}</p>
-      <p className="text-xs sm:text-sm mt-1" style={{ color: 'var(--text-muted)' }}>{subtitle}</p>
+      <div className="drop-zone-content">
+        <div className="drop-zone-icon">
+          <i className={`fas ${icon}`}></i>
+        </div>
+        <p className="drop-zone-title">{title}</p>
+        <p className="drop-zone-subtitle">{subtitle}</p>
+      </div>
     </div>
   );
 };
