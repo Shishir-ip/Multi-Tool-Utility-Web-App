@@ -5,14 +5,17 @@ interface ToolHeaderProps {
   title: string;
   description: string;
   color?: string;
+  showTitle?: boolean;
 }
 
-export const ToolHeader: React.FC<ToolHeaderProps> = ({ icon, title, description, color = 'var(--accent)' }) => (
+export const ToolHeader: React.FC<ToolHeaderProps> = ({ icon, title, description, color = 'var(--accent)', showTitle = true }) => (
   <div className="mb-4 sm:mb-6">
-    <h2 className="text-xl sm:text-2xl font-bold mb-2 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-      <i className={`fas ${icon}`} style={{ color }}></i>
-      {title}
-    </h2>
+    {showTitle && (
+      <h2 className="text-xl sm:text-2xl font-bold mb-2 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+        <i className={`fas ${icon}`} style={{ color }}></i>
+        {title}
+      </h2>
+    )}
     <p className="text-sm sm:text-base" style={{ color: 'var(--text-secondary)' }}>{description}</p>
   </div>
 );

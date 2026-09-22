@@ -359,6 +359,7 @@ export const FaviconGenerator: React.FC = () => {
   const [bgColor, setBgColor] = useState('#3b82f6');
   const [textColor, setTextColor] = useState('#ffffff');
   const [fontSize, setFontSize] = useState(24);
+  const [selectedSize, setSelectedSize] = useState<number | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -379,31 +380,82 @@ export const FaviconGenerator: React.FC = () => {
 
   const download = (size: number) => {
     if (!canvasRef.current) return;
+    setSelectedSize(size);
     const c = document.createElement('canvas');
     c.width = size; c.height = size;
     const ctx = c.getContext('2d')!;
     ctx.drawImage(canvasRef.current, 0, 0, size, size);
     const a = document.createElement('a');
     a.href = c.toDataURL('image/png'); a.download = `favicon-${size}.png`; a.click();
+    // Reset selection after 1 second
+    setTimeout(() => setSelectedSize(null), 1000);
+  };
+
+  const downloadAll = () => {
+    if (!canvasRef.current) return;
+    [16, 32, 48, 64, 128, 180].forEach((size, index) => {
+      setTimeout(() => {
+        const c = document.createElement('canvas');
+        c.width = size; c.height = size;
+        const ctx = c.getContext('2d')!;
+        ctx.drawImage(canvasRef.current!, 0, 0, size, size);
+        const a = document.createElement('a');
+        a.href = c.toDataURL('image/png');
+        a.download = `favicon-${size}.png`;
+        a.click();
+      }, index * 200);
+    });
   };
 
   return (
     <div className="tool-container">
-      <ToolHeader icon="fa-star" title="Favicon Generator" description="Generate favicons from text or letters" color="#8b5cf6" />
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         <div className="space-y-4">
           <div>
             <label className="text-sm font-medium block mb-1" style={{ color: 'var(--text-secondary)' }}>Text (1-2 chars)</label>
-            <input type="text" maxLength={2} value={text} onChange={e => setText(e.target.value)} className="input-field" />
+            <input 
+              type="text" 
+              maxLength={2} 
+              value={text} 
+              onChange={e => setText(e.target.value)} 
+              className="input-field" 
+              style={{ maxWidth: '120px' }}
+            />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-sm font-medium block mb-1" style={{ color: 'var(--text-secondary)' }}>Background</label>
-              <input type="color" value={bgColor} onChange={e => setBgColor(e.target.value)} className="w-full h-10 rounded cursor-pointer border" style={{ borderColor: 'var(--border-color)' }} />
+              <label className="text-sm font-medium block mb-1" style={{ color: 'var(--text-secondary)' }}>
+                <i className="fas fa-fill-drip mr-1"></i>Background
+              </label>
+              <div className="relative">
+                <input 
+                  type="color" 
+                  value={bgColor} 
+                  onChange={e => setBgColor(e.target.value)} 
+                  className="w-full h-12 rounded-lg cursor-pointer border-2 hover:border-[var(--accent)] transition-colors" 
+                  style={{ borderColor: 'var(--border-color)' }} 
+                />
+                <span className="absolute bottom-1 right-2 text-xs font-mono opacity-60 pointer-events-none" style={{ color: 'var(--text-primary)' }}>
+                  {bgColor}
+                </span>
+              </div>
             </div>
             <div>
-              <label className="text-sm font-medium block mb-1" style={{ color: 'var(--text-secondary)' }}>Text Color</label>
-              <input type="color" value={textColor} onChange={e => setTextColor(e.target.value)} className="w-full h-10 rounded cursor-pointer border" style={{ borderColor: 'var(--border-color)' }} />
+              <label className="text-sm font-medium block mb-1" style={{ color: 'var(--text-secondary)' }}>
+                <i className="fas fa-font mr-1"></i>Text Color
+              </label>
+              <div className="relative">
+                <input 
+                  type="color" 
+                  value={textColor} 
+                  onChange={e => setTextColor(e.target.value)} 
+                  className="w-full h-12 rounded-lg cursor-pointer border-2 hover:border-[var(--accent)] transition-colors" 
+                  style={{ borderColor: 'var(--border-color)' }} 
+                />
+                <span className="absolute bottom-1 right-2 text-xs font-mono opacity-60 pointer-events-none" style={{ color: 'var(--text-primary)' }}>
+                  {textColor}
+                </span>
+              </div>
             </div>
           </div>
           <div>
@@ -412,14 +464,36 @@ export const FaviconGenerator: React.FC = () => {
           </div>
         </div>
         <div className="flex flex-col items-center gap-4">
-          <canvas ref={canvasRef} className="rounded-xl border-2" style={{ borderColor: 'var(--border-color)', width: '128px', height: '128px', imageRendering: 'pixelated' }} />
+          <canvas ref={canvasRef} className="rounded-xl border-2 shadow-lg" style={{ borderColor: 'var(--border-color)', width: '128px', height: '128px', imageRendering: 'pixelated' }} />
           <div className="flex flex-wrap gap-2 justify-center">
             {[16, 32, 48, 64, 128, 180].map(s => (
-              <button key={s} onClick={() => download(s)} className="px-3 py-1.5 rounded-lg text-xs" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' }}>
+              <button 
+                key={s} 
+                onClick={() => download(s)} 
+                className="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:scale-105 hover:shadow-md"
+                style={{ 
+                  background: selectedSize === s ? 'var(--accent)' : 'var(--bg-tertiary)', 
+                  color: selectedSize === s ? 'white' : 'var(--text-primary)', 
+                  border: `2px solid ${selectedSize === s ? 'var(--accent)' : 'var(--border-color)'}`,
+                  boxShadow: selectedSize === s ? '0 4px 12px rgba(59, 130, 246, 0.3)' : 'none'
+                }}
+              >
+                <i className="fas fa-download mr-1 text-xs"></i>
                 {s}×{s}
               </button>
             ))}
           </div>
+          <button 
+            onClick={downloadAll}
+            className="btn-primary w-full mt-2"
+            style={{ 
+              background: 'linear-gradient(135deg, var(--accent), var(--accent-hover))',
+              boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
+            }}
+          >
+            <i className="fas fa-file-archive mr-2"></i>
+            Download All Sizes
+          </button>
         </div>
       </div>
     </div>
