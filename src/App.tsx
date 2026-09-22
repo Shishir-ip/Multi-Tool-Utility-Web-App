@@ -277,15 +277,15 @@ function App() {
               <button
                 key={cat.id}
                 onClick={() => selectCategory(cat.name)}
-                className="w-full text-left px-3 sm:px-4 py-2 rounded-lg mb-1 text-sm transition-all flex items-center gap-3 group"
+                className="w-full text-left px-3 sm:px-4 py-2.5 rounded-lg mb-1 text-sm transition-all flex items-center gap-3 group"
                 style={{
                   background: isActive ? 'var(--bg-tertiary)' : 'transparent',
                   color: isActive ? cat.color : 'var(--text-secondary)'
                 }}
               >
                 <i className={`fas ${cat.icon} w-5 text-center flex-shrink-0`} style={{ color: isActive ? cat.color : undefined }}></i>
-                <span className="truncate flex-1">{cat.name}</span>
-                <span className="text-xs px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-muted)' }}>{toolCount}</span>
+                <span className="sidebar-category-name">{cat.name}</span>
+                <span className="sidebar-badge">{toolCount}</span>
               </button>
             );
           })}
@@ -393,30 +393,35 @@ function App() {
             )}
 
             {/* Category Sections */}
-            {CATEGORIES.filter(cat => toolsByCategory[cat.name]?.length).map(cat => (
-              <section key={cat.id} className="mb-6 sm:mb-8">
-                <div className="flex items-center justify-between mb-3 sm:mb-4">
-                  <div className="flex items-center gap-2 sm:gap-3">
-                    <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg flex items-center justify-center" style={{ background: cat.color }}>
-                      <i className={`fas ${cat.icon} text-white text-xs sm:text-sm`}></i>
+            {CATEGORIES.filter(cat => toolsByCategory[cat.name]?.length).map(cat => {
+              const categoryTools = toolsByCategory[cat.name];
+              const maxDisplay = 8; // Show "View all" only if more than this
+              const shouldShowViewAll = !activeCategory && !searchQuery && categoryTools.length > maxDisplay;
+              
+              return (
+                <section key={cat.id} className="mb-6 sm:mb-8">
+                  <div className="section-header flex items-center justify-between mb-3 sm:mb-4">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                      <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg flex items-center justify-center" style={{ background: cat.color }}>
+                        <i className={`fas ${cat.icon} text-white text-xs sm:text-sm`}></i>
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-sm sm:text-base" style={{ color: 'var(--text-primary)' }}>{cat.name}</h3>
+                        <p className="text-[10px] sm:text-xs" style={{ color: 'var(--text-muted)' }}>
+                          {categoryTools.length} tools
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="font-bold text-sm sm:text-base" style={{ color: 'var(--text-primary)' }}>{cat.name}</h3>
-                      <p className="text-[10px] sm:text-xs" style={{ color: 'var(--text-muted)' }}>
-                        {toolsByCategory[cat.name].length} tools
-                      </p>
-                    </div>
+                    {shouldShowViewAll && (
+                      <button
+                        onClick={() => selectCategory(cat.name)}
+                        className="view-all-btn"
+                        style={{ color: cat.color, background: 'var(--bg-tertiary)' }}
+                      >
+                        View all <i className="fas fa-chevron-right text-xs"></i>
+                      </button>
+                    )}
                   </div>
-                  {!activeCategory && !searchQuery && (
-                    <button
-                      onClick={() => selectCategory(cat.name)}
-                      className="text-xs sm:text-sm px-2 sm:px-3 py-1 rounded-lg transition-all flex items-center gap-1"
-                      style={{ color: cat.color, background: 'var(--bg-tertiary)' }}
-                    >
-                      View all <i className="fas fa-chevron-right text-[8px] sm:text-[10px]"></i>
-                    </button>
-                  )}
-                </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
                   {toolsByCategory[cat.name].map(tool => (
@@ -436,15 +441,16 @@ function App() {
                           <i className={`fas ${tool.icon} text-sm`} style={{ color: cat.color }}></i>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h4 className="font-semibold text-sm truncate" style={{ color: 'var(--text-primary)' }}>{tool.name}</h4>
+                          <h4 className="tool-card-title">{tool.name}</h4>
                           <p className="text-xs line-clamp-2 mt-0.5" style={{ color: 'var(--text-secondary)' }}>{tool.description}</p>
                         </div>
                       </div>
                     </div>
                   ))}
                 </div>
-              </section>
-            ))}
+                </section>
+              );
+            })}
 
             {filteredTools.length === 0 && (
               <div className="text-center py-12 sm:py-16">
