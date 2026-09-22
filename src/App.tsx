@@ -236,6 +236,9 @@ function App() {
 
   return (
     <div className={`min-h-screen ${darkMode ? 'dark' : 'light'}`} style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
+      {/* Interactive Grid Pattern Background */}
+      <div className="grid-pattern-bg" />
+      
       {/* Sidebar Overlay */}
       <div className={`sidebar-overlay lg:hidden ${sidebarOpen ? 'active' : ''}`} onClick={() => setSidebarOpen(false)} />
 
@@ -316,14 +319,14 @@ function App() {
         </button>
 
         {!activeTool && (
-          <div className="flex-1 max-w-xl relative min-w-0">
-            <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }}></i>
+          <div className="flex-1 max-w-xl relative min-w-0 halo-search-wrapper">
+            <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 z-10" style={{ color: 'var(--text-muted)' }}></i>
             <input
               type="text"
               placeholder="Search all 49 tools..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="input-field search-input text-sm sm:text-base"
+              className="input-field search-input text-sm sm:text-base relative z-10"
             />
           </div>
         )}
