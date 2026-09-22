@@ -912,6 +912,237 @@ canvas, img, video, iframe {
   }
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   NOT FOUND PAGE (404)
+   ═══════════════════════════════════════════════════════════════ */
+
+.not-found-container {
+  min-height: calc(100vh - var(--header-height));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  position: relative;
+  overflow: hidden;
+  animation: fadeIn 0.5s ease-out;
+}
+
+.not-found-content {
+  text-align: center;
+  max-width: 600px;
+  position: relative;
+  z-index: 2;
+}
+
+/* Animated 404 Number */
+.not-found-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+  font-size: clamp(5rem, 15vw, 10rem);
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.05em;
+}
+
+.not-found-digit {
+  display: inline-block;
+  color: var(--text-primary);
+  animation: float 3s ease-in-out infinite;
+  text-shadow: 0 0 40px rgba(59, 130, 246, 0.3);
+}
+
+.not-found-digit:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.not-found-digit-center {
+  color: var(--accent);
+  animation-delay: 0.2s;
+  transform: scale(1.1);
+}
+
+.not-found-digit:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
+}
+
+/* Error Message */
+.not-found-title {
+  font-size: clamp(1.5rem, 4vw, 2.5rem);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 1rem;
+  animation: slideUp 0.6s ease-out 0.2s both;
+}
+
+.not-found-description {
+  font-size: clamp(1rem, 2.5vw, 1.25rem);
+  color: var(--text-secondary);
+  margin-bottom: 2.5rem;
+  line-height: 1.6;
+  animation: slideUp 0.6s ease-out 0.3s both;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Action Buttons */
+.not-found-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  align-items: center;
+  animation: slideUp 0.6s ease-out 0.4s both;
+}
+
+@media (min-width: 640px) {
+  .not-found-actions {
+    flex-direction: row;
+    justify-content: center;
+  }
+}
+
+.not-found-btn {
+  min-width: 180px;
+  padding: 0.875rem 1.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 12px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  border: none;
+  position: relative;
+  overflow: hidden;
+}
+
+.not-found-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
+
+.not-found-btn:active {
+  transform: translateY(0);
+}
+
+/* Decorative Circles */
+.not-found-decoration {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.not-found-circle {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--accent) 0%, transparent 70%);
+  opacity: 0.1;
+  animation: pulse 4s ease-in-out infinite;
+}
+
+.not-found-circle-1 {
+  width: 300px;
+  height: 300px;
+  top: 10%;
+  left: 10%;
+  animation-delay: 0s;
+}
+
+.not-found-circle-2 {
+  width: 400px;
+  height: 400px;
+  bottom: 10%;
+  right: 10%;
+  animation-delay: 1s;
+}
+
+.not-found-circle-3 {
+  width: 250px;
+  height: 250px;
+  top: 50%;
+  right: 20%;
+  animation-delay: 2s;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.15;
+  }
+}
+
+/* Fade In Animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Dark Mode Adjustments */
+.dark .not-found-digit {
+  text-shadow: 0 0 60px rgba(59, 130, 246, 0.4);
+}
+
+.dark .not-found-circle {
+  opacity: 0.08;
+}
+
+/* Mobile Optimizations */
+@media (max-width: 640px) {
+  .not-found-container {
+    padding: 1.5rem 1rem;
+  }
+
+  .not-found-number {
+    margin-bottom: 1.5rem;
+  }
+
+  .not-found-btn {
+    width: 100%;
+    min-width: unset;
+  }
+
+  .not-found-circle-1,
+  .not-found-circle-2,
+  .not-found-circle-3 {
+    transform: scale(0.7);
+  }
+}
+
 /* Ensure scrollable containers don't break layout */
 .overflow-auto-safe {
   overflow-x: auto;

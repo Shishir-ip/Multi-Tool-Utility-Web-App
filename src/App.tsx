@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
 import { TOOLS, CATEGORIES, CATEGORY_MAP, TIME_FOCUS_IDS } from './types';
+import { NotFoundPage } from './components/NotFoundPage';
 
 // Lazy-load tool modules for performance
 const ToolModules: Record<string, React.LazyExoticComponent<React.FC>> = {
@@ -80,14 +81,15 @@ const ToolModules: Record<string, React.LazyExoticComponent<React.FC>> = {
 
 const VALID_TOOL_IDS = TOOLS.map(t => t.id);
 
-function parseHash(): { tool: string | null; category: string | null } {
+function parseHash(): { tool: string | null; category: string | null; isInvalid: boolean } {
   const hash = window.location.hash.replace(/^#\/?/, '').trim();
-  if (!hash || hash === 'dashboard') return { tool: null, category: null };
-  if (VALID_TOOL_IDS.includes(hash)) return { tool: hash, category: null };
+  if (!hash || hash === 'dashboard') return { tool: null, category: null, isInvalid: false };
+  if (VALID_TOOL_IDS.includes(hash)) return { tool: hash, category: null, isInvalid: false };
   const decoded = decodeURIComponent(hash);
   const cat = CATEGORIES.find(c => c.name === decoded);
-  if (cat) return { tool: null, category: cat.name };
-  return { tool: null, category: null };
+  if (cat) return { tool: null, category: cat.name, isInvalid: false };
+  // Invalid route - not a valid tool or category
+  return { tool: null, category: null, isInvalid: true };
 }
 
 function buildHash(tool: string | null, category: string | null): string {
@@ -109,6 +111,7 @@ function App() {
   const initial = parseHash();
   const [activeTool, setActiveTool] = useState<string | null>(initial.tool);
   const [activeCategory, setActiveCategory] = useState<string | null>(initial.category);
+  const [isInvalidRoute, setIsInvalidRoute] = useState(initial.isInvalid);
   const [searchQuery, setSearchQuery] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
@@ -137,6 +140,7 @@ function App() {
       const parsed = parseHash();
       setActiveTool(parsed.tool);
       setActiveCategory(parsed.category);
+      setIsInvalidRoute(parsed.isInvalid);
       if (!parsed.tool) setSearchQuery('');
     };
     window.addEventListener('hashchange', handleHashChange);
@@ -192,6 +196,7 @@ function App() {
     
     setActiveTool(id);
     setActiveCategory(null);
+    setIsInvalidRoute(false);
     setSidebarOpen(false);
     
     // Scroll to top when opening a tool
@@ -200,6 +205,7 @@ function App() {
 
   const goBack = useCallback(() => {
     setActiveTool(null);
+    setIsInvalidRoute(false);
     setSearchQuery('');
     
     // Restore dashboard scroll position
@@ -211,6 +217,7 @@ function App() {
   const goToDashboard = useCallback(() => {
     setActiveTool(null);
     setActiveCategory(null);
+    setIsInvalidRoute(false);
     setSearchQuery('');
     setSidebarOpen(false);
     
@@ -223,6 +230,7 @@ function App() {
   const selectCategory = useCallback((catName: string) => {
     setActiveCategory(catName);
     setActiveTool(null);
+    setIsInvalidRoute(false);
     setSearchQuery('');
     setSidebarOpen(false);
   }, []);
@@ -357,7 +365,9 @@ function App() {
 
       {/* Main Content */}
       <main className={`main-content ${sidebarCollapsed ? 'main-sidebar-collapsed' : ''}`}>
-        {!activeTool ? (
+        {isInvalidRoute ? (
+          <NotFoundPage />
+        ) : !activeTool ? (
           <div className="animate-fade-in">
             {/* Hero section */}
             {!activeCategory && !searchQuery && (
