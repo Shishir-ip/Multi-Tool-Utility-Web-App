@@ -369,6 +369,95 @@ body {
   padding-left: 40px !important;
 }
 
+/* Halo Search Effect */
+.halo-search-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.halo-search-wrapper::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 10px;
+  padding: 2px;
+  background: linear-gradient(
+    135deg,
+    rgba(59, 130, 246, 0) 0%,
+    rgba(59, 130, 246, 0) 40%,
+    rgba(59, 130, 246, 0.8) 50%,
+    rgba(59, 130, 246, 0) 60%,
+    rgba(59, 130, 246, 0) 100%
+  );
+  background-size: 300% 300%;
+  background-position: 100% 100%;
+  transition: background-position 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  -webkit-mask: 
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.halo-search-wrapper:hover::before,
+.halo-search-wrapper:focus-within::before {
+  opacity: 1;
+  background-position: 0% 0%;
+  animation: halo-rotate 3s linear infinite;
+}
+
+@keyframes halo-rotate {
+  0% {
+    background-position: 0% 0%;
+  }
+  100% {
+    background-position: 300% 300%;
+  }
+}
+
+/* Light mode halo colors */
+.light .halo-search-wrapper::before {
+  background: linear-gradient(
+    135deg,
+    rgba(59, 130, 246, 0) 0%,
+    rgba(59, 130, 246, 0) 40%,
+    rgba(59, 130, 246, 0.6) 50%,
+    rgba(59, 130, 246, 0) 60%,
+    rgba(59, 130, 246, 0) 100%
+  );
+  background-size: 300% 300%;
+}
+
+/* Interactive Grid Pattern Background */
+.grid-pattern-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.03;
+  background-image: 
+    linear-gradient(var(--text-muted) 1px, transparent 1px),
+    linear-gradient(90deg, var(--text-muted) 1px, transparent 1px);
+  background-size: 40px 40px;
+  mask-image: radial-gradient(ellipse 80% 50% at 50% 50%, black 40%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 80% 50% at 50% 50%, black 40%, transparent 100%);
+}
+
+.light .grid-pattern-bg {
+  opacity: 0.05;
+}
+
+/* Ensure main content is above grid */
+.main-content {
+  position: relative;
+  z-index: 1;
+}
+
 /* Fullscreen mode for OLED tools */
 .fullscreen-mode {
   position: fixed !important;
