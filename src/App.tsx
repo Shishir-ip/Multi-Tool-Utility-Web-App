@@ -24,6 +24,7 @@ const ToolModules: Record<string, React.LazyExoticComponent<React.FC>> = {
   'exif-viewer': lazy(() => import('./tools/ImageDesign').then(m => ({ default: m.ExifViewer }))),
   'collage-maker': lazy(() => import('./tools/ImageDesign').then(m => ({ default: m.CollageMaker }))),
   'favicon-generator': lazy(() => import('./tools/ImageDesign').then(m => ({ default: m.FaviconGenerator }))),
+  'basic-editor': lazy(() => import('./tools/ImageDesign').then(m => ({ default: m.BasicEditor }))),
   'color-picker': lazy(() => import('./tools/ColorPicker')),
   'gpa-calculator': lazy(() => import('./tools/StudentTools').then(m => ({ default: m.GpaCalculator }))),
   'marks-calculator': lazy(() => import('./tools/StudentTools').then(m => ({ default: m.MarksCalculator }))),
