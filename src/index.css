@@ -243,7 +243,7 @@ body {
   outline-offset: 2px;
 }
 
-/* Buttons — Unified System (Issue #1: Consolidate to 3 variants) */
+/* Buttons — Unified System with Interactive Hover Effect */
 .btn-primary,
 .btn-secondary,
 .btn-ghost {
@@ -251,7 +251,7 @@ body {
   border-radius: 8px;
   font-weight: 500;
   font-size: 14px;
-  transition: all 0.2s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   border: none;
   cursor: pointer;
   white-space: nowrap;
@@ -260,6 +260,9 @@ body {
   align-items: center;
   justify-content: center;
   gap: 8px;
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
 }
 
 @media (min-width: 640px) {
@@ -271,22 +274,53 @@ body {
   }
 }
 
+/* Interactive hover effect - animated background */
+.btn-primary::before,
+.btn-secondary::before,
+.btn-ghost::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+    rgba(255, 255, 255, 0.15) 0%,
+    transparent 50%
+  );
+  opacity: 0;
+  transition: opacity 0.3s;
+  z-index: -1;
+}
+
+.btn-primary:hover::before,
+.btn-secondary:hover::before,
+.btn-ghost:hover::before {
+  opacity: 1;
+}
+
 /* Primary: Main actions */
 .btn-primary {
   background: var(--accent);
   color: white;
   font-weight: 600;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
 }
 
 .btn-primary:hover:not(:disabled) {
   background: var(--accent-hover);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3);
+}
+
+.btn-primary:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
 }
 
 .btn-primary:disabled {
   opacity: 0.5;
   cursor: not-allowed;
   transform: none;
+  box-shadow: none;
 }
 
 /* Secondary: Alternative actions */
@@ -298,6 +332,12 @@ body {
 
 .btn-secondary:hover:not(:disabled) {
   background: var(--border-color);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.btn-secondary:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .btn-secondary:disabled {
@@ -315,11 +355,40 @@ body {
 .btn-ghost:hover:not(:disabled) {
   background: var(--bg-tertiary);
   border-color: var(--border-color);
+  transform: translateY(-1px);
+}
+
+.btn-ghost:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .btn-ghost:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* Interactive hover button - enhanced effect for all buttons */
+.btn-primary,
+.btn-secondary,
+.btn-ghost {
+  --glow-color: var(--accent);
+}
+
+.btn-primary:hover:not(:disabled),
+.btn-secondary:hover:not(:disabled),
+.btn-ghost:hover:not(:disabled) {
+  animation: button-glow 2s ease-in-out infinite;
+}
+
+@keyframes button-glow {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(59, 130, 246, 0.2),
+                0 0 10px rgba(59, 130, 246, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.4),
+                0 0 20px rgba(59, 130, 246, 0.2);
+  }
 }
 
 /* Tool Container — responsive padding */
