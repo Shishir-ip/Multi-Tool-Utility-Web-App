@@ -76,49 +76,80 @@ export const ClipForgeStudio: React.FC = () => {
   
   const videoRef = useRef<HTMLVideoElement>(null);
 
+  // Processing ID to prevent race conditions
+  const processingIdRef = useRef(0);
+
   // Central handler for video file processing
   const handleVideoFile = useCallback(async (file: File) => {
+    console.log('[ClipForge] File selected:', {
+      name: file.name,
+      type: file.type,
+      size: file.size,
+      extension: file.name.split('.').pop()
+    });
+
+    // Increment processing ID to cancel any previous operations
+    const currentProcessingId = ++processingIdRef.current;
+
     // Validate file type
     const validExtensions = ['.mp4', '.webm', '.mov', '.m4v', '.avi', '.mkv'];
     const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
     
     if (!file.type.startsWith('video/') && !validExtensions.includes(fileExtension)) {
+      console.warn('[ClipForge] Invalid file type:', file.type);
       setProcessingState({
         status: 'error',
         progress: 0,
         message: 'Invalid file format',
         error: 'Please select a valid video file (MP4, WebM, MOV, AVI, MKV)',
       });
+      setMode('processing');
       return;
     }
 
-    // Check FFmpeg support
-    if (!isFFmpegSupported()) {
-      setProcessingState({
-        status: 'error',
-        progress: 0,
-        message: 'Browser not supported',
-        error: 'Your browser does not support the required video processing features. Please try a modern browser like Chrome, Firefox, or Edge.',
-      });
-      return;
-    }
-
-    // Reset states
+    // IMMEDIATELY update UI state - file is accepted
+    const fileName = file.name.replace(/\.[^/.]+$/, '');
+    setVideoName(fileName);
+    setVideoSize(file.size);
+    setExportSettings(prev => ({ ...prev, filename: `${fileName}_clipforge` }));
+    
+    // Create source Object URL immediately
+    const sourceUrl = URL.createObjectURL(file);
+    
+    // Show analyzing state immediately
     setProcessingState({
       status: 'checking',
       progress: 0,
-      message: 'Starting video processing...',
+      message: 'Analyzing video...',
     });
-    
-    setVideoName(file.name.replace(/\.[^/.]+$/, ''));
-    setVideoSize(file.size);
-    setExportSettings(prev => ({ ...prev, filename: `${file.name.replace(/\.[^/.]+$/, '')}_clipforge` }));
     setMode('processing');
+
+    console.log('[ClipForge] File accepted, showing analyzing state');
 
     try {
       // Process video with automatic compatibility handling
-      const processed = await processVideo(file, (state) => {
-        setProcessingState(state);
+      const processed = await processVideo(file, sourceUrl, (state) => {
+        // Only update state if this is still the current processing operation
+        if (currentProcessingId === processingIdRef.current) {
+          setProcessingState(state);
+        }
+      });
+
+      // Only update state if this is still the current processing operation
+      if (currentProcessingId !== processingIdRef.current) {
+        console.log('[ClipForge] Processing cancelled (newer file selected)');
+        URL.revokeObjectURL(sourceUrl);
+        if (processed.previewUrl) {
+          URL.revokeObjectURL(processed.previewUrl);
+        }
+        return;
+      }
+
+      console.log('[ClipForge] Video processed successfully:', {
+        isNativePlayable: processed.isNativePlayable,
+        duration: processed.duration,
+        width: processed.width,
+        height: processed.height
       });
 
       setProcessedVideo(processed);
@@ -130,7 +161,16 @@ export const ClipForgeStudio: React.FC = () => {
       
       setMode('editor');
     } catch (error) {
+      // Only update state if this is still the current processing operation
+      if (currentProcessingId !== processingIdRef.current) {
+        console.log('[ClipForge] Error handling cancelled (newer file selected)');
+        URL.revokeObjectURL(sourceUrl);
+        return;
+      }
+
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('[ClipForge] Processing failed:', errorMessage);
+      
       setProcessingState({
         status: 'error',
         progress: 0,
@@ -299,10 +339,16 @@ export const ClipForgeStudio: React.FC = () => {
 
   // Reset to start
   const handleStartNew = () => {
+    console.log('[ClipForge] Resetting to start');
+    
+    // Cancel any ongoing processing
+    processingIdRef.current++;
+    
     // Pause video
     if (videoRef.current) {
       videoRef.current.pause();
-      videoRef.current.src = '';
+      videoRef.current.removeAttribute('src');
+      videoRef.current.load();
     }
     
     // Clean up processed video
@@ -338,10 +384,16 @@ export const ClipForgeStudio: React.FC = () => {
   // Cleanup on unmount
   useEffect(() => {
     return () => {
+      console.log('[ClipForge] Component unmounting, cleaning up...');
+      
+      // Cancel any ongoing processing
+      processingIdRef.current++;
+      
       // Pause video
       if (videoRef.current) {
         videoRef.current.pause();
-        videoRef.current.src = '';
+        videoRef.current.removeAttribute('src');
+        videoRef.current.load();
       }
       
       // Clean up processed video
