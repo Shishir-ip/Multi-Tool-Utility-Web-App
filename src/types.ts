@@ -42,7 +42,6 @@ export const TOOLS: Tool[] = [
   { id: 'collage-maker', name: 'Photo Collage Maker', category: 'Image & Design Suite', description: 'Create photo collages from images', icon: 'fa-th', keywords: ['collage','photo','grid','layout'] },
   { id: 'favicon-generator', name: 'Favicon Generator', category: 'Image & Design Suite', description: 'Generate favicons from images or text', icon: 'fa-star', keywords: ['favicon','icon','generate','website'] },
   { id: 'basic-editor', name: 'Basic Editor', category: 'Image & Design Suite', description: 'Video trimmer, cropper, and aspect ratio changer', icon: 'fa-film', keywords: ['video','trim','crop','aspect','ratio','edit'] },
-  { id: 'clipforge-studio', name: 'ClipForge Studio', category: 'Image & Design Suite', description: 'Trim, crop, resize, convert, extract audio, and change the aspect ratio of videos directly in your browser.', icon: 'fa-video', keywords: ['video editor', 'video trimmer', 'video cutter', 'video cropper', 'video converter', 'video resize', 'aspect ratio', 'youtube video', 'youtube editor', 'audio extractor', 'mp4', 'webm', 'mov', 'video compressor', 'clip maker'] },
 
   // ── Developer & Coding ──
   { id: 'code-runner', name: 'HTML/CSS/JS Runner', category: 'Developer & Coding', description: 'Write and run code in real-time', icon: 'fa-code', keywords: ['code','html','css','javascript','run'] },
