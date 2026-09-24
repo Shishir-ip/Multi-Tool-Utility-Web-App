@@ -1,16 +1,12 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { ToolHeader, DropZone, Button } from '../components/Shared';
-
-interface VideoInfo {
-  file: File;
-  url: string;
-  name: string;
-  size: number;
-  duration: number;
-  width: number;
-  height: number;
-  format: string;
-}
+import { 
+  processVideo, 
+  cleanupProcessedVideo, 
+  ProcessedVideo,
+  VideoProcessingState,
+  isFFmpegSupported 
+} from './clipforge/videoProcessor';
 
 interface CropSettings {
   x: number;
@@ -32,16 +28,28 @@ interface ExportSettings {
   filename: string;
 }
 
-type EditorMode = 'import' | 'editor' | 'exporting' | 'complete';
+type EditorMode = 'import' | 'processing' | 'editor' | 'exporting' | 'complete';
 
 export const ClipForgeStudio: React.FC = () => {
   const [mode, setMode] = useState<EditorMode>('import');
   const [importMethod, setImportMethod] = useState<'upload' | 'url'>('upload');
-  const [videoInfo, setVideoInfo] = useState<VideoInfo | null>(null);
   const [videoUrl, setVideoUrl] = useState('');
   const [urlError, setUrlError] = useState('');
-  const [isVideoReady, setIsVideoReady] = useState(false);
-  const [videoError, setVideoError] = useState('');
+  
+  // Video processing state
+  const [processingState, setProcessingState] = useState<VideoProcessingState>({
+    status: 'checking',
+    progress: 0,
+    message: '',
+  });
+  const [processedVideo, setProcessedVideo] = useState<ProcessedVideo | null>(null);
+  
+  // Video metadata
+  const [videoName, setVideoName] = useState('');
+  const [videoSize, setVideoSize] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [width, setWidth] = useState(0);
+  const [height, setHeight] = useState(0);
   
   // Editor state
   const [startTime, setStartTime] = useState(0);
@@ -67,64 +75,70 @@ export const ClipForgeStudio: React.FC = () => {
   const [exportedUrl, setExportedUrl] = useState('');
   
   const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   // Central handler for video file processing
-  const handleVideoFile = useCallback((file: File) => {
+  const handleVideoFile = useCallback(async (file: File) => {
     // Validate file type
-    const validVideoTypes = ['video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska'];
     const validExtensions = ['.mp4', '.webm', '.mov', '.m4v', '.avi', '.mkv'];
     const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
     
     if (!file.type.startsWith('video/') && !validExtensions.includes(fileExtension)) {
-      setVideoError('Please select a valid video file (MP4, WebM, MOV, AVI, MKV)');
+      setProcessingState({
+        status: 'error',
+        progress: 0,
+        message: 'Invalid file format',
+        error: 'Please select a valid video file (MP4, WebM, MOV, AVI, MKV)',
+      });
       return;
     }
 
-    // Clear previous video if exists
-    if (videoInfo?.url) {
-      URL.revokeObjectURL(videoInfo.url);
+    // Check FFmpeg support
+    if (!isFFmpegSupported()) {
+      setProcessingState({
+        status: 'error',
+        progress: 0,
+        message: 'Browser not supported',
+        error: 'Your browser does not support the required video processing features. Please try a modern browser like Chrome, Firefox, or Edge.',
+      });
+      return;
     }
 
     // Reset states
-    setVideoError('');
-    setIsVideoReady(false);
+    setProcessingState({
+      status: 'checking',
+      progress: 0,
+      message: 'Starting video processing...',
+    });
+    
+    setVideoName(file.name.replace(/\.[^/.]+$/, ''));
+    setVideoSize(file.size);
+    setExportSettings(prev => ({ ...prev, filename: `${file.name.replace(/\.[^/.]+$/, '')}_clipforge` }));
+    setMode('processing');
 
-    // Create Object URL for preview
-    const url = URL.createObjectURL(file);
-    
-    // Create temporary video element to read metadata
-    const tempVideo = document.createElement('video');
-    tempVideo.preload = 'metadata';
-    
-    tempVideo.onloadedmetadata = () => {
-      const info: VideoInfo = {
-        file,
-        url,
-        name: file.name.replace(/\.[^/.]+$/, ''),
-        size: file.size,
-        duration: tempVideo.duration,
-        width: tempVideo.videoWidth,
-        height: tempVideo.videoHeight,
-        format: file.type.split('/')[1]?.toUpperCase() || 'VIDEO'
-      };
-      
-      setVideoInfo(info);
+    try {
+      // Process video with automatic compatibility handling
+      const processed = await processVideo(file, (state) => {
+        setProcessingState(state);
+      });
+
+      setProcessedVideo(processed);
+      setDuration(processed.duration);
+      setWidth(processed.width);
+      setHeight(processed.height);
       setStartTime(0);
-      setEndTime(tempVideo.duration);
-      setExportSettings(prev => ({ ...prev, filename: `${info.name}_clipforge` }));
-      setMode('editor');
+      setEndTime(processed.duration);
       
-      // Don't revoke URL here - it's needed for the video player
-    };
-    
-    tempVideo.onerror = () => {
-      setVideoError('This video format cannot be previewed by your browser. Try an MP4 (H.264/AAC) file.');
-      URL.revokeObjectURL(url);
-    };
-    
-    tempVideo.src = url;
-  }, [videoInfo]);
+      setMode('editor');
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setProcessingState({
+        status: 'error',
+        progress: 0,
+        message: 'Processing failed',
+        error: `This video could not be decoded by your browser or the built-in converter. ${errorMessage}`,
+      });
+    }
+  }, []);
 
   // Handle file upload from DropZone
   const handleFileUpload = (files: FileList) => {
@@ -137,22 +151,15 @@ export const ClipForgeStudio: React.FC = () => {
   // Handle video element events
   useEffect(() => {
     const video = videoRef.current;
-    if (!video || !videoInfo) return;
+    if (!video || !processedVideo) return;
 
     const handleLoadedMetadata = () => {
-      setIsVideoReady(true);
-      setVideoError('');
+      // Video is ready
     };
 
     const handleError = () => {
       if (video.error) {
-        const errorMessages: Record<number, string> = {
-          1: 'Video loading was aborted.',
-          2: 'A network error occurred while loading the video.',
-          3: 'Video decoding failed. The file may be corrupted.',
-          4: 'Video format not supported by your browser.'
-        };
-        setVideoError(errorMessages[video.error.code] || 'An unknown error occurred while loading the video.');
+        console.error('Video playback error:', video.error);
       }
     };
 
@@ -163,7 +170,7 @@ export const ClipForgeStudio: React.FC = () => {
       video.removeEventListener('loadedmetadata', handleLoadedMetadata);
       video.removeEventListener('error', handleError);
     };
-  }, [videoInfo]);
+  }, [processedVideo]);
 
   // Handle URL input
   const handleUrlImport = () => {
@@ -178,8 +185,6 @@ export const ClipForgeStudio: React.FC = () => {
       return;
     }
 
-    // For direct media URLs, we can try to load them
-    // In a production environment, you'd want to validate and potentially proxy these
     setUrlError('URL import is currently limited to direct media files. Please upload your video file for full editing capabilities.');
   };
 
@@ -222,20 +227,20 @@ export const ClipForgeStudio: React.FC = () => {
       x: (100 - crop.width) / 2,
       y: (100 - crop.height) / 2,
       width: crop.width,
-      height: crop.height
+      height: crop.height,
     });
   };
 
   // Export video
   const handleExport = async () => {
-    if (!videoInfo) return;
+    if (!processedVideo) return;
 
     setIsProcessing(true);
     setProgress(0);
 
     try {
       // Simulate processing with progress
-      // In a real implementation, this would use FFmpeg WASM
+      // In a real implementation, this would use FFmpeg for actual video processing
       const interval = setInterval(() => {
         setProgress(prev => {
           if (prev >= 95) {
@@ -294,31 +299,40 @@ export const ClipForgeStudio: React.FC = () => {
 
   // Reset to start
   const handleStartNew = () => {
-    // Pause video if playing
+    // Pause video
     if (videoRef.current) {
       videoRef.current.pause();
       videoRef.current.src = '';
-      videoRef.current.load();
     }
     
-    // Revoke Object URLs
-    if (videoInfo?.url) {
-      URL.revokeObjectURL(videoInfo.url);
+    // Clean up processed video
+    if (processedVideo) {
+      cleanupProcessedVideo(processedVideo);
     }
+    
+    // Revoke exported URL
     if (exportedUrl) {
       URL.revokeObjectURL(exportedUrl);
     }
     
     // Reset all states
-    setVideoInfo(null);
+    setProcessedVideo(null);
     setExportedBlob(null);
     setExportedUrl('');
-    setIsVideoReady(false);
-    setVideoError('');
+    setProcessingState({
+      status: 'checking',
+      progress: 0,
+      message: '',
+    });
     setMode('import');
     setProgress(0);
     setStartTime(0);
     setEndTime(0);
+    setVideoName('');
+    setVideoSize(0);
+    setDuration(0);
+    setWidth(0);
+    setHeight(0);
   };
 
   // Cleanup on unmount
@@ -330,15 +344,17 @@ export const ClipForgeStudio: React.FC = () => {
         videoRef.current.src = '';
       }
       
-      // Revoke Object URLs
-      if (videoInfo?.url) {
-        URL.revokeObjectURL(videoInfo.url);
+      // Clean up processed video
+      if (processedVideo) {
+        cleanupProcessedVideo(processedVideo);
       }
+      
+      // Revoke exported URL
       if (exportedUrl) {
         URL.revokeObjectURL(exportedUrl);
       }
     };
-  }, [videoInfo, exportedUrl]);
+  }, [processedVideo, exportedUrl]);
 
   // Import Screen
   if (mode === 'import') {
@@ -447,6 +463,88 @@ export const ClipForgeStudio: React.FC = () => {
     );
   }
 
+  // Processing Screen
+  if (mode === 'processing') {
+    return (
+      <div className="tool-container">
+        <ToolHeader 
+          icon="fa-video" 
+          title="ClipForge Studio" 
+          description="Processing your video..." 
+          color="#8b5cf6" 
+        />
+
+        <div className="py-12">
+          {/* Video Info */}
+          {videoName && (
+            <div className="mb-6 p-4 rounded-lg" style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)' }}>
+              <div className="flex items-center gap-2 mb-2">
+                <i className="fas fa-file-video" style={{ color: '#8b5cf6' }}></i>
+                <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{videoName}</span>
+              </div>
+              <div className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                {formatSize(videoSize)}
+              </div>
+            </div>
+          )}
+
+          {/* Processing Status */}
+          <div className="text-center">
+            {processingState.status === 'checking' && (
+              <>
+                <i className="fas fa-search text-5xl mb-4" style={{ color: '#8b5cf6' }}></i>
+                <h3 className="text-xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>
+                  Checking video compatibility...
+                </h3>
+                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                  Analyzing video format and browser support
+                </p>
+              </>
+            )}
+
+            {processingState.status === 'transcoding' && (
+              <>
+                <i className="fas fa-cogs fa-spin text-5xl mb-4" style={{ color: '#8b5cf6' }}></i>
+                <h3 className="text-xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>
+                  Preparing compatible preview...
+                </h3>
+                <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>
+                  Converting video to browser-compatible format
+                </p>
+                <div className="max-w-md mx-auto">
+                  <div className="w-full h-3 rounded-full overflow-hidden mb-2" style={{ background: 'var(--bg-tertiary)' }}>
+                    <div
+                      className="h-full rounded-full transition-all duration-300"
+                      style={{ width: `${processingState.progress}%`, background: '#8b5cf6' }}
+                    />
+                  </div>
+                  <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                    {processingState.progress}%
+                  </p>
+                </div>
+              </>
+            )}
+
+            {processingState.status === 'error' && (
+              <>
+                <i className="fas fa-exclamation-triangle text-5xl mb-4" style={{ color: '#ef4444' }}></i>
+                <h3 className="text-xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>
+                  Processing Failed
+                </h3>
+                <p className="text-sm mb-6 max-w-md mx-auto" style={{ color: 'var(--text-secondary)' }}>
+                  {processingState.error || 'An error occurred while processing your video.'}
+                </p>
+                <Button variant="secondary" onClick={handleStartNew} icon="fa-redo">
+                  Try Another Video
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Export Complete Screen
   if (mode === 'complete' && exportedBlob) {
     return (
@@ -514,7 +612,9 @@ export const ClipForgeStudio: React.FC = () => {
   }
 
   // Editor Screen
-  if (mode === 'editor' && videoInfo) {
+  if (mode === 'editor' && processedVideo) {
+    const previewUrl = processedVideo.previewUrl || processedVideo.sourceUrl;
+    
     return (
       <div className="tool-container">
         <ToolHeader 
@@ -528,11 +628,17 @@ export const ClipForgeStudio: React.FC = () => {
         <div className="mb-4 p-3 rounded-lg flex flex-wrap items-center gap-4" style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)' }}>
           <div className="flex items-center gap-2">
             <i className="fas fa-file-video" style={{ color: '#8b5cf6' }}></i>
-            <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{videoInfo.file.name}</span>
+            <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{videoName}</span>
           </div>
           <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
-            {formatSize(videoInfo.size)} • {videoInfo.width}×{videoInfo.height} • {formatTime(videoInfo.duration)}
+            {formatSize(videoSize)} • {width}×{height} • {formatTime(duration)}
           </div>
+          {!processedVideo.isNativePlayable && (
+            <div className="text-xs px-2 py-1 rounded" style={{ background: 'rgba(139, 92, 246, 0.2)', color: '#8b5cf6' }}>
+              <i className="fas fa-magic mr-1"></i>
+              Auto-converted for preview
+            </div>
+          )}
           <div className="ml-auto flex gap-2">
             <Button variant="secondary" onClick={handleStartNew} icon="fa-times">
               Change Video
@@ -542,33 +648,11 @@ export const ClipForgeStudio: React.FC = () => {
 
         {/* Video Preview */}
         <div className="mb-6 relative bg-black rounded-lg overflow-hidden" style={{ minHeight: '300px' }}>
-          {!isVideoReady && !videoError && (
-            <div className="absolute inset-0 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.8)' }}>
-              <div className="text-center">
-                <i className="fas fa-spinner fa-spin text-3xl mb-2" style={{ color: '#8b5cf6' }}></i>
-                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Loading video...</p>
-              </div>
-            </div>
-          )}
-          
-          {videoError && (
-            <div className="absolute inset-0 flex items-center justify-center p-6" style={{ background: 'rgba(0,0,0,0.9)' }}>
-              <div className="text-center max-w-md">
-                <i className="fas fa-exclamation-triangle text-4xl mb-3" style={{ color: '#ef4444' }}></i>
-                <p className="text-sm mb-4" style={{ color: 'var(--text-primary)' }}>{videoError}</p>
-                <Button variant="secondary" onClick={handleStartNew} icon="fa-redo">
-                  Try Another Video
-                </Button>
-              </div>
-            </div>
-          )}
-          
           <video
             ref={videoRef}
-            src={videoInfo.url}
+            src={previewUrl}
             className="w-full"
             style={{ 
-              display: isVideoReady && !videoError ? 'block' : 'none',
               maxHeight: '500px',
               objectFit: 'contain'
             }}
@@ -579,22 +663,6 @@ export const ClipForgeStudio: React.FC = () => {
               if (time >= endTime) {
                 e.currentTarget.pause();
                 e.currentTarget.currentTime = startTime;
-              }
-            }}
-            onLoadedData={() => {
-              setIsVideoReady(true);
-              setVideoError('');
-            }}
-            onError={(e) => {
-              const video = e.currentTarget;
-              if (video.error) {
-                const errorMessages: Record<number, string> = {
-                  1: 'Video loading was aborted.',
-                  2: 'A network error occurred while loading the video.',
-                  3: 'Video decoding failed. The file may be corrupted.',
-                  4: 'Video format not supported by your browser. Try an MP4 (H.264/AAC) file.'
-                };
-                setVideoError(errorMessages[video.error.code] || 'An unknown error occurred while loading the video.');
               }
             }}
           />
@@ -629,7 +697,7 @@ export const ClipForgeStudio: React.FC = () => {
               <input
                 type="range"
                 min="0"
-                max={videoInfo.duration}
+                max={duration}
                 step="0.001"
                 value={startTime}
                 onChange={(e) => setStartTime(parseFloat(e.target.value))}
@@ -645,7 +713,7 @@ export const ClipForgeStudio: React.FC = () => {
                   type="number"
                   step="0.001"
                   min={startTime}
-                  max={videoInfo.duration}
+                  max={duration}
                   value={endTime}
                   onChange={(e) => setEndTime(parseFloat(e.target.value) || 0)}
                   className="input-field flex-1"
@@ -657,7 +725,7 @@ export const ClipForgeStudio: React.FC = () => {
               <input
                 type="range"
                 min="0"
-                max={videoInfo.duration}
+                max={duration}
                 step="0.001"
                 value={endTime}
                 onChange={(e) => setEndTime(parseFloat(e.target.value))}
@@ -874,7 +942,7 @@ export const ClipForgeStudio: React.FC = () => {
                 className="input-field"
                 disabled={exportSettings.audioOnly}
               >
-                <option value="original">Original ({videoInfo.width}×{videoInfo.height})</option>
+                <option value="original">Original ({width}×{height})</option>
                 <option value="2160p">2160p (4K)</option>
                 <option value="1440p">1440p (2K)</option>
                 <option value="1080p">1080p (Full HD)</option>
@@ -981,9 +1049,6 @@ export const ClipForgeStudio: React.FC = () => {
             </p>
           </div>
         )}
-
-        {/* Hidden Canvas */}
-        <canvas ref={canvasRef} className="hidden" />
       </div>
     );
   }
