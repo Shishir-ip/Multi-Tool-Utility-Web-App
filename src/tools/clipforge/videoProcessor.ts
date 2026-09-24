@@ -63,50 +63,63 @@ export async function getFFmpeg(): Promise<FFmpeg> {
  */
 export function checkNativePlayback(file: File): Promise<boolean> {
   return new Promise((resolve) => {
+    console.log('[videoProcessor] Testing native playback for:', file.type);
+    
     const video = document.createElement('video');
     const url = URL.createObjectURL(file);
     
     let resolved = false;
-    const cleanup = () => {
-      URL.revokeObjectURL(url);
+    const resolveOnce = (canPlay: boolean) => {
       if (!resolved) {
         resolved = true;
-        resolve(false);
+        URL.revokeObjectURL(url);
+        console.log('[videoProcessor] Native playback test result:', canPlay);
+        resolve(canPlay);
       }
     };
 
     // Set timeout for cases where no events fire
-    const timeout = setTimeout(cleanup, 5000);
+    const timeout = setTimeout(() => {
+      console.log('[videoProcessor] Native playback test timed out');
+      resolveOnce(false);
+    }, 5000);
 
     video.oncanplay = () => {
       clearTimeout(timeout);
-      if (!resolved) {
-        resolved = true;
-        URL.revokeObjectURL(url);
-        resolve(true);
-      }
+      resolveOnce(true);
     };
 
-    video.onerror = () => {
+    video.onloadeddata = () => {
+      // If we get loadeddata, the video can be played
       clearTimeout(timeout);
-      cleanup();
+      resolveOnce(true);
     };
 
-    // Check canPlayType first as a quick check
-    const canPlay = video.canPlayType(file.type);
-    if (canPlay === '') {
+    video.onerror = (e) => {
       clearTimeout(timeout);
-      cleanup();
+      console.log('[videoProcessor] Native playback error:', video.error);
+      resolveOnce(false);
+    };
+
+    // Quick check with canPlayType
+    const canPlayType = video.canPlayType(file.type);
+    console.log('[videoProcessor] canPlayType result:', canPlayType);
+    
+    if (canPlayType === '') {
+      clearTimeout(timeout);
+      resolveOnce(false);
       return;
     }
 
+    // Actually try to load the video
+    video.preload = 'metadata';
     video.src = url;
     video.load();
   });
 }
 
 /**
- * Get video metadata
+ * Get video metadata from File
  */
 export function getVideoMetadata(file: File): Promise<{
   duration: number;
@@ -129,6 +142,34 @@ export function getVideoMetadata(file: File): Promise<{
     video.onerror = () => {
       URL.revokeObjectURL(url);
       reject(new Error('Failed to load video metadata'));
+    };
+
+    video.preload = 'metadata';
+    video.src = url;
+  });
+}
+
+/**
+ * Get video metadata from URL (Object URL or direct URL)
+ */
+export function getVideoMetadataFromUrl(url: string): Promise<{
+  duration: number;
+  width: number;
+  height: number;
+}> {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement('video');
+
+    video.onloadedmetadata = () => {
+      resolve({
+        duration: video.duration,
+        width: video.videoWidth,
+        height: video.videoHeight,
+      });
+    };
+
+    video.onerror = () => {
+      reject(new Error('Failed to load video metadata from URL'));
     };
 
     video.preload = 'metadata';
@@ -194,31 +235,27 @@ export async function transcodeVideo(
  */
 export async function processVideo(
   file: File,
+  sourceUrl: string,
   onStateChange: (state: VideoProcessingState) => void
 ): Promise<ProcessedVideo> {
-  const sourceUrl = URL.createObjectURL(file);
-
   try {
-    // Step 1: Get metadata
+    // Step 1: Check native playback first (before metadata extraction)
     onStateChange({
       status: 'checking',
       progress: 0,
       message: 'Analyzing video...',
     });
 
-    const metadata = await getVideoMetadata(file);
-
-    // Step 2: Check native playback
-    onStateChange({
-      status: 'checking',
-      progress: 20,
-      message: 'Checking browser compatibility...',
-    });
-
+    console.log('[videoProcessor] Checking native playback...');
     const isNativePlayable = await checkNativePlayback(file);
 
     if (isNativePlayable) {
+      console.log('[videoProcessor] Native playback supported, extracting metadata...');
+      
       // Native playback works - use original file
+      // Extract metadata from the playable video
+      const metadata = await getVideoMetadata(file);
+
       onStateChange({
         status: 'native',
         progress: 100,
@@ -235,7 +272,9 @@ export async function processVideo(
       };
     }
 
-    // Step 3: Transcode with FFmpeg
+    console.log('[videoProcessor] Native playback failed, attempting FFmpeg fallback...');
+
+    // Step 2: Transcode with FFmpeg
     onStateChange({
       status: 'transcoding',
       progress: 0,
@@ -251,6 +290,10 @@ export async function processVideo(
     });
 
     const previewUrl = URL.createObjectURL(previewFile);
+
+    // Extract metadata from the transcoded preview
+    console.log('[videoProcessor] Extracting metadata from transcoded preview...');
+    const metadata = await getVideoMetadataFromUrl(previewUrl);
 
     onStateChange({
       status: 'ready',
@@ -269,10 +312,9 @@ export async function processVideo(
       isNativePlayable: false,
     };
   } catch (error) {
-    // Clean up on error
-    URL.revokeObjectURL(sourceUrl);
-    
+    // Don't revoke sourceUrl here - it's managed by the caller
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('[videoProcessor] Processing failed:', errorMessage);
     
     onStateChange({
       status: 'error',
