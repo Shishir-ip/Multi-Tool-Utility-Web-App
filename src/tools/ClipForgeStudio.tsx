@@ -40,6 +40,8 @@ export const ClipForgeStudio: React.FC = () => {
   const [videoInfo, setVideoInfo] = useState<VideoInfo | null>(null);
   const [videoUrl, setVideoUrl] = useState('');
   const [urlError, setUrlError] = useState('');
+  const [isVideoReady, setIsVideoReady] = useState(false);
+  const [videoError, setVideoError] = useState('');
   
   // Editor state
   const [startTime, setStartTime] = useState(0);
@@ -67,41 +69,101 @@ export const ClipForgeStudio: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Handle file upload
-  const handleFileUpload = (files: FileList) => {
-    const file = files[0];
-    if (!file || !file.type.startsWith('video/')) {
-      alert('Please select a valid video file');
+  // Central handler for video file processing
+  const handleVideoFile = useCallback((file: File) => {
+    // Validate file type
+    const validVideoTypes = ['video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska'];
+    const validExtensions = ['.mp4', '.webm', '.mov', '.m4v', '.avi', '.mkv'];
+    const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
+    
+    if (!file.type.startsWith('video/') && !validExtensions.includes(fileExtension)) {
+      setVideoError('Please select a valid video file (MP4, WebM, MOV, AVI, MKV)');
       return;
     }
 
+    // Clear previous video if exists
+    if (videoInfo?.url) {
+      URL.revokeObjectURL(videoInfo.url);
+    }
+
+    // Reset states
+    setVideoError('');
+    setIsVideoReady(false);
+
+    // Create Object URL for preview
     const url = URL.createObjectURL(file);
-    const video = document.createElement('video');
-    video.preload = 'metadata';
     
-    video.onloadedmetadata = () => {
+    // Create temporary video element to read metadata
+    const tempVideo = document.createElement('video');
+    tempVideo.preload = 'metadata';
+    
+    tempVideo.onloadedmetadata = () => {
       const info: VideoInfo = {
         file,
         url,
         name: file.name.replace(/\.[^/.]+$/, ''),
         size: file.size,
-        duration: video.duration,
-        width: video.videoWidth,
-        height: video.videoHeight,
-        format: file.type.split('/')[1].toUpperCase()
+        duration: tempVideo.duration,
+        width: tempVideo.videoWidth,
+        height: tempVideo.videoHeight,
+        format: file.type.split('/')[1]?.toUpperCase() || 'VIDEO'
       };
       
       setVideoInfo(info);
       setStartTime(0);
-      setEndTime(video.duration);
+      setEndTime(tempVideo.duration);
       setExportSettings(prev => ({ ...prev, filename: `${info.name}_clipforge` }));
       setMode('editor');
       
+      // Don't revoke URL here - it's needed for the video player
+    };
+    
+    tempVideo.onerror = () => {
+      setVideoError('This video format cannot be previewed by your browser. Try an MP4 (H.264/AAC) file.');
       URL.revokeObjectURL(url);
     };
     
-    video.src = url;
+    tempVideo.src = url;
+  }, [videoInfo]);
+
+  // Handle file upload from DropZone
+  const handleFileUpload = (files: FileList) => {
+    const file = files[0];
+    if (file) {
+      handleVideoFile(file);
+    }
   };
+
+  // Handle video element events
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !videoInfo) return;
+
+    const handleLoadedMetadata = () => {
+      setIsVideoReady(true);
+      setVideoError('');
+    };
+
+    const handleError = () => {
+      if (video.error) {
+        const errorMessages: Record<number, string> = {
+          1: 'Video loading was aborted.',
+          2: 'A network error occurred while loading the video.',
+          3: 'Video decoding failed. The file may be corrupted.',
+          4: 'Video format not supported by your browser.'
+        };
+        setVideoError(errorMessages[video.error.code] || 'An unknown error occurred while loading the video.');
+      }
+    };
+
+    video.addEventListener('loadedmetadata', handleLoadedMetadata);
+    video.addEventListener('error', handleError);
+
+    return () => {
+      video.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      video.removeEventListener('error', handleError);
+    };
+  }, [videoInfo]);
 
   // Handle URL input
   const handleUrlImport = () => {
@@ -232,24 +294,49 @@ export const ClipForgeStudio: React.FC = () => {
 
   // Reset to start
   const handleStartNew = () => {
-    if (videoInfo) {
+    // Pause video if playing
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.src = '';
+      videoRef.current.load();
+    }
+    
+    // Revoke Object URLs
+    if (videoInfo?.url) {
       URL.revokeObjectURL(videoInfo.url);
     }
     if (exportedUrl) {
       URL.revokeObjectURL(exportedUrl);
     }
+    
+    // Reset all states
     setVideoInfo(null);
     setExportedBlob(null);
     setExportedUrl('');
+    setIsVideoReady(false);
+    setVideoError('');
     setMode('import');
     setProgress(0);
+    setStartTime(0);
+    setEndTime(0);
   };
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (videoInfo) URL.revokeObjectURL(videoInfo.url);
-      if (exportedUrl) URL.revokeObjectURL(exportedUrl);
+      // Pause video
+      if (videoRef.current) {
+        videoRef.current.pause();
+        videoRef.current.src = '';
+      }
+      
+      // Revoke Object URLs
+      if (videoInfo?.url) {
+        URL.revokeObjectURL(videoInfo.url);
+      }
+      if (exportedUrl) {
+        URL.revokeObjectURL(exportedUrl);
+      }
     };
   }, [videoInfo, exportedUrl]);
 
@@ -454,17 +541,60 @@ export const ClipForgeStudio: React.FC = () => {
         </div>
 
         {/* Video Preview */}
-        <div className="mb-6 relative bg-black rounded-lg overflow-hidden">
+        <div className="mb-6 relative bg-black rounded-lg overflow-hidden" style={{ minHeight: '300px' }}>
+          {!isVideoReady && !videoError && (
+            <div className="absolute inset-0 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.8)' }}>
+              <div className="text-center">
+                <i className="fas fa-spinner fa-spin text-3xl mb-2" style={{ color: '#8b5cf6' }}></i>
+                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Loading video...</p>
+              </div>
+            </div>
+          )}
+          
+          {videoError && (
+            <div className="absolute inset-0 flex items-center justify-center p-6" style={{ background: 'rgba(0,0,0,0.9)' }}>
+              <div className="text-center max-w-md">
+                <i className="fas fa-exclamation-triangle text-4xl mb-3" style={{ color: '#ef4444' }}></i>
+                <p className="text-sm mb-4" style={{ color: 'var(--text-primary)' }}>{videoError}</p>
+                <Button variant="secondary" onClick={handleStartNew} icon="fa-redo">
+                  Try Another Video
+                </Button>
+              </div>
+            </div>
+          )}
+          
           <video
             ref={videoRef}
             src={videoInfo.url}
             className="w-full"
+            style={{ 
+              display: isVideoReady && !videoError ? 'block' : 'none',
+              maxHeight: '500px',
+              objectFit: 'contain'
+            }}
             controls
+            preload="metadata"
             onTimeUpdate={(e) => {
               const time = e.currentTarget.currentTime;
               if (time >= endTime) {
                 e.currentTarget.pause();
                 e.currentTarget.currentTime = startTime;
+              }
+            }}
+            onLoadedData={() => {
+              setIsVideoReady(true);
+              setVideoError('');
+            }}
+            onError={(e) => {
+              const video = e.currentTarget;
+              if (video.error) {
+                const errorMessages: Record<number, string> = {
+                  1: 'Video loading was aborted.',
+                  2: 'A network error occurred while loading the video.',
+                  3: 'Video decoding failed. The file may be corrupted.',
+                  4: 'Video format not supported by your browser. Try an MP4 (H.264/AAC) file.'
+                };
+                setVideoError(errorMessages[video.error.code] || 'An unknown error occurred while loading the video.');
               }
             }}
           />
