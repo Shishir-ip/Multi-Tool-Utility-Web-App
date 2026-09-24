@@ -113,7 +113,7 @@ export const ClipForgeStudio: React.FC = () => {
     setShowApiKeyInput(false);
   };
 
-  // Download video from URL using VidKraken API
+  // Download video from URL using VidKraken API (via serverless proxy)
   const downloadFromUrl = async () => {
     if (!videoUrl.trim()) {
       setError('Please enter a video URL');
@@ -131,21 +131,22 @@ export const ClipForgeStudio: React.FC = () => {
     setDownloadProgress('Submitting download request...');
 
     try {
-      // Step 1: Submit download request
-      const submitResponse = await fetch('https://vidkraken.com/api/v2/download', {
+      // Step 1: Submit download request via serverless proxy
+      const submitResponse = await fetch('/api/dl', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           url: videoUrl,
-          format: '720' // Default to 720p
+          format: '720', // Default to 720p
+          apiKey: apiKey
         })
       });
 
       if (!submitResponse.ok) {
-        throw new Error(`Failed to submit download: ${submitResponse.statusText}`);
+        const errorData = await submitResponse.json();
+        throw new Error(errorData.error || `Failed to submit download: ${submitResponse.statusText}`);
       }
 
       const submitData = await submitResponse.json();
@@ -154,25 +155,23 @@ export const ClipForgeStudio: React.FC = () => {
       console.log('[ClipForge] Download job submitted:', jobId);
       setDownloadProgress(`Download queued (Job ID: ${jobId.slice(0, 8)}...)`);
 
-      // Step 2: Poll for status
+      // Step 2: Poll for status with exponential backoff
       let downloadUrl = '';
       let attempts = 0;
-      const maxAttempts = 60; // 5 minutes max (60 * 5 seconds)
+      const maxAttempts = 30; // Max 30 attempts
+      let pollInterval = 2000; // Start with 2 seconds
 
       while (attempts < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds
+        await new Promise(resolve => setTimeout(resolve, pollInterval));
         attempts++;
 
-        setDownloadProgress(`Processing... (${attempts * 5}s)`);
+        setDownloadProgress(`Processing... (${attempts * (pollInterval / 1000)}s)`);
 
-        const statusResponse = await fetch(`https://vidkraken.com/api/v2/download/${jobId}`, {
-          headers: {
-            'Authorization': `Bearer ${apiKey}`
-          }
-        });
+        const statusResponse = await fetch(`/api/dl/${jobId}?apiKey=${encodeURIComponent(apiKey)}`);
 
         if (!statusResponse.ok) {
-          throw new Error(`Failed to check status: ${statusResponse.statusText}`);
+          const errorData = await statusResponse.json();
+          throw new Error(errorData.error || `Failed to check status: ${statusResponse.statusText}`);
         }
 
         const statusData = await statusResponse.json();
@@ -183,6 +182,11 @@ export const ClipForgeStudio: React.FC = () => {
           break;
         } else if (statusData.status === 'FAILED') {
           throw new Error('Download failed on server');
+        }
+
+        // Exponential backoff: 2s, 4s, 8s, 16s, 32s, then cap at 32s
+        if (pollInterval < 32000) {
+          pollInterval = Math.min(pollInterval * 2, 32000);
         }
       }
 
