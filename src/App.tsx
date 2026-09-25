@@ -106,12 +106,12 @@ const ToolModules: Record<string, React.LazyExoticComponent<React.FC>> = {
 
   // ── NEW: Video Tools ──
   'video-editor': lazy(() => import('./tools/ImageDesign').then(m => ({ default: m.BasicEditor }))),
-  'video-compressor': lazy(() => import('./tools/ImageDesign').then(m => ({ default: m.BasicEditor }))),
-  'video-to-gif': lazy(() => import('./tools/ImageDesign').then(m => ({ default: m.BasicEditor }))),
-  'video-thumbnail': lazy(() => import('./tools/ImageDesign').then(m => ({ default: m.BasicEditor }))),
-  'subtitle-editor': lazy(() => import('./tools/ImageDesign').then(m => ({ default: m.BasicEditor }))),
-  'video-speed': lazy(() => import('./tools/ImageDesign').then(m => ({ default: m.BasicEditor }))),
-  'video-stabilizer': lazy(() => import('./tools/ImageDesign').then(m => ({ default: m.BasicEditor }))),
+  'video-compressor': lazy(() => import('./tools/VideoCompressor').then(m => ({ default: m.VideoCompressor }))),
+  'video-to-gif': lazy(() => import('./tools/VideoToGif').then(m => ({ default: m.VideoToGif }))),
+  'video-thumbnail': lazy(() => import('./tools/VideoThumbnailExtractor').then(m => ({ default: m.VideoThumbnailExtractor }))),
+  'subtitle-editor': lazy(() => import('./tools/SubtitleEditor').then(m => ({ default: m.SubtitleEditor }))),
+  'video-speed': lazy(() => import('./tools/VideoSpeedChanger').then(m => ({ default: m.VideoSpeedChanger }))),
+  'video-stabilizer': lazy(() => import('./tools/VideoStabilizer').then(m => ({ default: m.VideoStabilizer }))),
 
   // ── NEW: Fun & Games ──
   'typing-speed-test': lazy(() => import('./tools/TypingSpeedTest').then(m => ({ default: m.TypingSpeedTest }))),
