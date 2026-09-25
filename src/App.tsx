@@ -1,6 +1,15 @@
 import { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
 import { TOOLS, CATEGORIES, CATEGORY_MAP, TIME_FOCUS_IDS } from './types';
 import { NotFoundPage } from './components/NotFoundPage';
+import { 
+  getRecentlyUsedTools, 
+  addRecentlyUsedTool, 
+  getFavoriteTools, 
+  toggleFavoriteTool, 
+  isFavoriteTool,
+  getSystemThemePreference,
+  setupThemeChangeListener
+} from './utils/ui-enhancements';
 
 // Lazy-load tool modules for performance
 const ToolModules: Record<string, React.LazyExoticComponent<React.FC>> = {
@@ -78,6 +87,37 @@ const ToolModules: Record<string, React.LazyExoticComponent<React.FC>> = {
 
   // ── NEW: WhatsApp Chat ──
   'whatsapp-chat': lazy(() => import('./tools/WhatsAppChat').then(m => ({ default: m.WhatsAppChat }))),
+
+  // ── NEW: AI Tools ──
+  'ai-setup': lazy(() => import('./tools/AISetup').then(m => ({ default: m.AISetup }))),
+  'ai-text-summarizer': lazy(() => import('./tools/AITextSummarizer').then(m => ({ default: m.AITextSummarizer }))),
+  'ai-writing-assistant': lazy(() => import('./tools/AIWritingAssistant').then(m => ({ default: m.AIWritingAssistant }))),
+  'ai-code-explainer': lazy(() => import('./tools/AICodeExplainer').then(m => ({ default: m.AICodeExplainer }))),
+  'ai-email-generator': lazy(() => import('./tools/AIEmailGenerator').then(m => ({ default: m.AIEmailGenerator }))),
+  'ai-resume-builder': lazy(() => import('./tools/AIResumeBuilder').then(m => ({ default: m.AIResumeBuilder }))),
+  'ai-image-enhancer': lazy(() => import('./tools/AIImageEnhancer').then(m => ({ default: m.AIImageEnhancer }))),
+  'ai-background-remover': lazy(() => import('./tools/AIBackgroundRemover').then(m => ({ default: m.AIBackgroundRemover }))),
+
+  // ── NEW: Markdown Previewer ──
+  'markdown-previewer': lazy(() => import('./tools/MarkdownPreviewer').then(m => ({ default: m.MarkdownPreviewer }))),
+
+  // ── NEW: Background Remover ──
+  'background-remover': lazy(() => import('./tools/AIBackgroundRemover').then(m => ({ default: m.AIBackgroundRemover }))),
+
+  // ── NEW: Video Tools ──
+  'video-editor': lazy(() => import('./tools/ImageDesign').then(m => ({ default: m.BasicEditor }))),
+  'video-compressor': lazy(() => import('./tools/ImageDesign').then(m => ({ default: m.BasicEditor }))),
+  'video-to-gif': lazy(() => import('./tools/ImageDesign').then(m => ({ default: m.BasicEditor }))),
+  'video-thumbnail': lazy(() => import('./tools/ImageDesign').then(m => ({ default: m.BasicEditor }))),
+  'subtitle-editor': lazy(() => import('./tools/ImageDesign').then(m => ({ default: m.BasicEditor }))),
+  'video-speed': lazy(() => import('./tools/ImageDesign').then(m => ({ default: m.BasicEditor }))),
+  'video-stabilizer': lazy(() => import('./tools/ImageDesign').then(m => ({ default: m.BasicEditor }))),
+
+  // ── NEW: Fun & Games ──
+  'typing-speed-test': lazy(() => import('./tools/TypingSpeedTest').then(m => ({ default: m.TypingSpeedTest }))),
+  'reaction-time-test': lazy(() => import('./tools/ReactionTimeTest').then(m => ({ default: m.ReactionTimeTest }))),
+  'memory-game': lazy(() => import('./tools/MemoryGame').then(m => ({ default: m.MemoryGame }))),
+  'word-scramble': lazy(() => import('./tools/WordScramble').then(m => ({ default: m.WordScramble }))),
 };
 
 const VALID_TOOL_IDS = TOOLS.map(t => t.id);
@@ -144,8 +184,16 @@ function App() {
   });
   const [darkMode, setDarkMode] = useState(() => {
     const saved = localStorage.getItem('multitool-theme');
-    return saved ? saved === 'dark' : true;
+    if (saved) return saved === 'dark';
+    // Auto-detect from system preference
+    return getSystemThemePreference() === 'dark';
   });
+  
+  // Recently used tools state
+  const [recentlyUsed, setRecentlyUsed] = useState<string[]>(getRecentlyUsedTools());
+  
+  // Favorites state
+  const [favorites, setFavorites] = useState<string[]>(getFavoriteTools());
 
   // Store dashboard scroll position
   let dashboardScrollPosition = 0;
@@ -180,6 +228,26 @@ function App() {
   useEffect(() => {
     localStorage.setItem('multitool-theme', darkMode ? 'dark' : 'light');
   }, [darkMode]);
+
+  // Dark mode auto-detection
+  useEffect(() => {
+    const cleanup = setupThemeChangeListener((theme) => {
+      // Only auto-switch if user hasn't manually set a preference
+      const saved = localStorage.getItem('multitool-theme');
+      if (!saved) {
+        setDarkMode(theme === 'dark');
+      }
+    });
+    return cleanup;
+  }, []);
+
+  // Track recently used tools
+  useEffect(() => {
+    if (activeTool) {
+      addRecentlyUsedTool(activeTool);
+      setRecentlyUsed(getRecentlyUsedTools());
+    }
+  }, [activeTool]);
 
   useEffect(() => {
     localStorage.setItem('multitool-sidebar-collapsed', String(sidebarCollapsed));
@@ -431,6 +499,137 @@ function App() {
               </div>
             )}
 
+            {/* Recently Used Tools */}
+            {!activeCategory && !searchQuery && recentlyUsed.length > 0 && (
+              <section className="mb-6 sm:mb-8">
+                <div className="section-header flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+                  <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg flex items-center justify-center" style={{ background: '#6366f1' }}>
+                    <i className="fas fa-history text-white text-xs sm:text-sm"></i>
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-sm sm:text-base" style={{ color: 'var(--text-primary)' }}>Recently Used</h3>
+                    <p className="text-[10px] sm:text-xs" style={{ color: 'var(--text-muted)' }}>
+                      {recentlyUsed.length} tool{recentlyUsed.length !== 1 ? 's' : ''}
+                    </p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+                  {recentlyUsed.slice(0, 4).map(toolId => {
+                    const tool = TOOLS.find(t => t.id === toolId);
+                    if (!tool) return null;
+                    const cat = CATEGORIES.find(c => c.name === tool.category);
+                    const isFav = favorites.includes(tool.id);
+                    return (
+                      <div
+                        key={tool.id}
+                        className="tool-card relative"
+                        onClick={() => openTool(tool.id)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') openTool(tool.id); }}
+                      >
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleFavoriteTool(tool.id);
+                            setFavorites(getFavoriteTools());
+                          }}
+                          className="absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center transition-all hover:scale-110"
+                          style={{ 
+                            background: isFav ? '#f59e0b' : 'var(--bg-tertiary)',
+                            color: isFav ? 'white' : 'var(--text-muted)',
+                            border: '1px solid var(--border-color)',
+                            zIndex: 10
+                          }}
+                          title={isFav ? 'Remove from favorites' : 'Add to favorites'}
+                          aria-label={isFav ? 'Remove from favorites' : 'Add to favorites'}
+                        >
+                          <i className={`fas fa-star text-xs`}></i>
+                        </button>
+                        <div className="flex items-start gap-3">
+                          <div
+                            className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+                            style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)' }}
+                          >
+                            <i className={`fas ${tool.icon} text-sm`} style={{ color: cat?.color }}></i>
+                          </div>
+                          <div className="flex-1 min-w-0 pr-8">
+                            <h4 className="tool-card-title">{tool.name}</h4>
+                            <p className="text-xs line-clamp-2 mt-0.5" style={{ color: 'var(--text-secondary)' }}>{tool.description}</p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+
+            {/* Favorites */}
+            {!activeCategory && !searchQuery && favorites.length > 0 && (
+              <section className="mb-6 sm:mb-8">
+                <div className="section-header flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+                  <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg flex items-center justify-center" style={{ background: '#f59e0b' }}>
+                    <i className="fas fa-star text-white text-xs sm:text-sm"></i>
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-sm sm:text-base" style={{ color: 'var(--text-primary)' }}>Favorites</h3>
+                    <p className="text-[10px] sm:text-xs" style={{ color: 'var(--text-muted)' }}>
+                      {favorites.length} tool{favorites.length !== 1 ? 's' : ''}
+                    </p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+                  {favorites.map(toolId => {
+                    const tool = TOOLS.find(t => t.id === toolId);
+                    if (!tool) return null;
+                    const cat = CATEGORIES.find(c => c.name === tool.category);
+                    return (
+                      <div
+                        key={tool.id}
+                        className="tool-card relative"
+                        onClick={() => openTool(tool.id)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') openTool(tool.id); }}
+                      >
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleFavoriteTool(tool.id);
+                            setFavorites(getFavoriteTools());
+                          }}
+                          className="absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center transition-all hover:scale-110"
+                          style={{ 
+                            background: '#f59e0b',
+                            color: 'white',
+                            border: '1px solid var(--border-color)',
+                            zIndex: 10
+                          }}
+                          title="Remove from favorites"
+                          aria-label="Remove from favorites"
+                        >
+                          <i className={`fas fa-star text-xs`}></i>
+                        </button>
+                        <div className="flex items-start gap-3">
+                          <div
+                            className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+                            style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)' }}
+                          >
+                            <i className={`fas ${tool.icon} text-sm`} style={{ color: cat?.color }}></i>
+                          </div>
+                          <div className="flex-1 min-w-0 pr-8">
+                            <h4 className="tool-card-title">{tool.name}</h4>
+                            <p className="text-xs line-clamp-2 mt-0.5" style={{ color: 'var(--text-secondary)' }}>{tool.description}</p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+
             {/* Category Sections */}
             {CATEGORIES.filter(cat => toolsByCategory[cat.name]?.length).map(cat => {
               const categoryTools = toolsByCategory[cat.name];
@@ -463,29 +662,52 @@ function App() {
                   </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
-                  {toolsByCategory[cat.name].map(tool => (
-                    <div
-                      key={tool.id}
-                      className="tool-card"
-                      onClick={() => openTool(tool.id)}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') openTool(tool.id); }}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div
-                          className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-                          style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)' }}
+                  {toolsByCategory[cat.name].map(tool => {
+                    const isFav = favorites.includes(tool.id);
+                    return (
+                      <div
+                        key={tool.id}
+                        className="tool-card relative"
+                        onClick={() => openTool(tool.id)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') openTool(tool.id); }}
+                      >
+                        {/* Favorite Button */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleFavoriteTool(tool.id);
+                            setFavorites(getFavoriteTools());
+                          }}
+                          className="absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center transition-all hover:scale-110"
+                          style={{ 
+                            background: isFav ? '#f59e0b' : 'var(--bg-tertiary)',
+                            color: isFav ? 'white' : 'var(--text-muted)',
+                            border: '1px solid var(--border-color)',
+                            zIndex: 10
+                          }}
+                          title={isFav ? 'Remove from favorites' : 'Add to favorites'}
+                          aria-label={isFav ? 'Remove from favorites' : 'Add to favorites'}
                         >
-                          <i className={`fas ${tool.icon} text-sm`} style={{ color: cat.color }}></i>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="tool-card-title">{tool.name}</h4>
-                          <p className="text-xs line-clamp-2 mt-0.5" style={{ color: 'var(--text-secondary)' }}>{tool.description}</p>
+                          <i className={`fas fa-star text-xs`}></i>
+                        </button>
+
+                        <div className="flex items-start gap-3">
+                          <div
+                            className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+                            style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)' }}
+                          >
+                            <i className={`fas ${tool.icon} text-sm`} style={{ color: cat.color }}></i>
+                          </div>
+                          <div className="flex-1 min-w-0 pr-8">
+                            <h4 className="tool-card-title">{tool.name}</h4>
+                            <p className="text-xs line-clamp-2 mt-0.5" style={{ color: 'var(--text-secondary)' }}>{tool.description}</p>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
                 </section>
               );
