@@ -23,6 +23,9 @@ export const CATEGORIES: Category[] = [
   { id: 'time', name: 'Time & Productivity', icon: 'fa-clock', color: '#ec4899' },
   { id: 'calculators', name: 'Calculators & Converters', icon: 'fa-calculator', color: '#3b82f6' },
   { id: 'security', name: 'Security & Utilities', icon: 'fa-shield-alt', color: '#6366f1' },
+  { id: 'ai-tools', name: 'AI Tools', icon: 'fa-robot', color: '#a855f7' },
+  { id: 'video-tools', name: 'Video Tools', icon: 'fa-video', color: '#f97316' },
+  { id: 'fun-games', name: 'Fun & Games', icon: 'fa-gamepad', color: '#ec4899' },
 ];
 
 export const TOOLS: Tool[] = [
@@ -41,7 +44,13 @@ export const TOOLS: Tool[] = [
   { id: 'exif-viewer', name: 'EXIF/Metadata Viewer', category: 'Image & Design Suite', description: 'View image metadata and EXIF data', icon: 'fa-info-circle', keywords: ['exif','metadata','image','info'] },
   { id: 'collage-maker', name: 'Photo Collage Maker', category: 'Image & Design Suite', description: 'Create photo collages from images', icon: 'fa-th', keywords: ['collage','photo','grid','layout'] },
   { id: 'favicon-generator', name: 'Favicon Generator', category: 'Image & Design Suite', description: 'Generate favicons from images or text', icon: 'fa-star', keywords: ['favicon','icon','generate','website'] },
-  { id: 'basic-editor', name: 'Basic Editor', category: 'Image & Design Suite', description: 'Video trimmer, cropper, and aspect ratio changer', icon: 'fa-film', keywords: ['video','trim','crop','aspect','ratio','edit'] },
+  { id: 'video-editor', name: 'Video Editor', category: 'Video Tools', description: 'Trim, crop, and edit videos', icon: 'fa-film', keywords: ['video','trim','crop','aspect','ratio','edit'] },
+  { id: 'video-compressor', name: 'Video Compressor', category: 'Video Tools', description: 'Compress video file size', icon: 'fa-compress', keywords: ['video','compress','reduce','size'] },
+  { id: 'video-to-gif', name: 'Video to GIF', category: 'Video Tools', description: 'Convert video clips to GIF', icon: 'fa-image', keywords: ['video','gif','convert','animation'] },
+  { id: 'video-thumbnail', name: 'Video Thumbnail Extractor', category: 'Video Tools', description: 'Extract thumbnails from video', icon: 'fa-image', keywords: ['video','thumbnail','extract','image'] },
+  { id: 'subtitle-editor', name: 'Subtitle Editor', category: 'Video Tools', description: 'Create and edit subtitles', icon: 'fa-closed-captioning', keywords: ['subtitle','caption','srt','edit'] },
+  { id: 'video-speed', name: 'Video Speed Changer', category: 'Video Tools', description: 'Change video playback speed', icon: 'fa-tachometer-alt', keywords: ['video','speed','slow','fast','playback'] },
+  { id: 'video-stabilizer', name: 'Video Stabilizer', category: 'Video Tools', description: 'Stabilize shaky videos', icon: 'fa-video', keywords: ['video','stabilize','shake','smooth'] },
 
   // ── Developer & Coding ──
   { id: 'code-runner', name: 'HTML/CSS/JS Runner', category: 'Developer & Coding', description: 'Write and run code in real-time', icon: 'fa-code', keywords: ['code','html','css','javascript','run'] },
@@ -112,6 +121,26 @@ export const TOOLS: Tool[] = [
   { id: 'aspect-ratio-calc', name: 'Aspect Ratio Calculator', category: 'Calculators & Converters', description: 'Calculate screen dimensions', icon: 'fa-desktop', keywords: ['aspect','ratio','screen','resolution','width','height'] },
   { id: 'readability-analyzer', name: 'Readability Analyzer', category: 'Student & Academic', description: 'Analyze text readability scores', icon: 'fa-book-open', keywords: ['readability','flesch','grade','level','analyze','text'] },
   { id: 'paper-generator', name: 'Printable Paper Generator', category: 'Student & Academic', description: 'Generate lined, grid, or dot paper', icon: 'fa-file-lines', keywords: ['paper','print','lined','grid','dot','notebook'] },
+
+  // ── AI Tools ──
+  { id: 'ai-setup', name: 'AI API Setup', category: 'AI Tools', description: 'Configure your AI provider API keys', icon: 'fa-key', keywords: ['ai','api','setup','openrouter','gemini','key'] },
+  { id: 'ai-text-summarizer', name: 'AI Text Summarizer', category: 'AI Tools', description: 'Summarize long text with AI', icon: 'fa-compress-alt', keywords: ['ai','summarize','text','condense','brief'] },
+  { id: 'ai-image-enhancer', name: 'AI Image Enhancer', category: 'AI Tools', description: 'Enhance image quality with AI', icon: 'fa-magic', keywords: ['ai','image','enhance','quality','upscale'] },
+  { id: 'ai-background-remover', name: 'AI Background Remover', category: 'AI Tools', description: 'Remove image backgrounds with AI', icon: 'fa-eraser', keywords: ['ai','background','remove','image','cutout'] },
+  { id: 'ai-writing-assistant', name: 'AI Writing Assistant', category: 'AI Tools', description: 'Get AI writing help and suggestions', icon: 'fa-pen-fancy', keywords: ['ai','writing','assistant','help','suggest'] },
+  { id: 'ai-code-explainer', name: 'AI Code Explainer', category: 'AI Tools', description: 'Explain code with AI', icon: 'fa-code', keywords: ['ai','code','explain','understand','documentation'] },
+  { id: 'ai-email-generator', name: 'AI Email Generator', category: 'AI Tools', description: 'Generate professional emails with AI', icon: 'fa-envelope', keywords: ['ai','email','generate','professional','write'] },
+  { id: 'ai-resume-builder', name: 'AI Resume Builder', category: 'AI Tools', description: 'Build resumes with AI assistance', icon: 'fa-file-alt', keywords: ['ai','resume','cv','build','career','job'] },
+
+  // ── Additional Tools ──
+  { id: 'background-remover', name: 'Background Remover', category: 'Image & Design Suite', description: 'Remove image backgrounds', icon: 'fa-eraser', keywords: ['background','remove','image','cutout'] },
+  { id: 'markdown-previewer', name: 'Markdown Previewer', category: 'Developer & Coding', description: 'Preview markdown in real-time', icon: 'fa-markdown', keywords: ['markdown','preview','md','render','text'] },
+
+  // ── Fun & Games ──
+  { id: 'typing-speed-test', name: 'Typing Speed Test', category: 'Fun & Games', description: 'Test your typing speed and accuracy', icon: 'fa-keyboard', keywords: ['typing','speed','test','wpm','accuracy','game'] },
+  { id: 'reaction-time-test', name: 'Reaction Time Test', category: 'Fun & Games', description: 'Test your reaction time', icon: 'fa-bolt', keywords: ['reaction','time','test','speed','reflex','game'] },
+  { id: 'memory-game', name: 'Memory Game', category: 'Fun & Games', description: 'Classic card matching memory game', icon: 'fa-brain', keywords: ['memory','game','card','match','puzzle','fun'] },
+  { id: 'word-scramble', name: 'Word Scramble', category: 'Fun & Games', description: 'Unscramble the letters to form words', icon: 'fa-puzzle-piece', keywords: ['word','scramble','game','puzzle','unscramble','fun'] },
 ];
 
 export const CATEGORY_MAP: Record<string, Category> = Object.fromEntries(

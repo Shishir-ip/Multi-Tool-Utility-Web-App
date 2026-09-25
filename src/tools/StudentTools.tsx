@@ -1,45 +1,392 @@
 import React, { useState, useMemo } from 'react';
 import { ToolHeader, Button } from '../components/Shared';
 
-// ── GPA Calculator ──
+// ── GPA/CGPA Calculator (Redesigned) ──
 export const GpaCalculator: React.FC = () => {
-  const [courses, setCourses] = useState([{ name: '', credit: 3, grade: 4 }]);
+  const [mode, setMode] = useState<'gpa' | 'cgpa'>('gpa');
+  const [courses, setCourses] = useState<Array<{ name: string; credit: number; grade: number }>>([]);
+  const [semesters, setSemesters] = useState<Array<{ gpa: number; credits: number }>>([]);
+  const [showGradeScale, setShowGradeScale] = useState(false);
+  const [showCalcDetails, setShowCalcDetails] = useState(false);
+
   const gradeScale = [
     { label: 'A+', value: 4.0 }, { label: 'A', value: 4.0 }, { label: 'A-', value: 3.7 },
     { label: 'B+', value: 3.3 }, { label: 'B', value: 3.0 }, { label: 'B-', value: 2.7 },
     { label: 'C+', value: 2.3 }, { label: 'C', value: 2.0 }, { label: 'C-', value: 1.7 },
     { label: 'D', value: 1.0 }, { label: 'F', value: 0.0 },
   ];
+
   const addCourse = () => setCourses(p => [...p, { name: '', credit: 3, grade: 4 }]);
   const removeCourse = (i: number) => setCourses(p => p.filter((_, idx) => idx !== i));
-  const update = (i: number, field: string, val: any) => setCourses(p => p.map((c, idx) => idx === i ? { ...c, [field]: val } : c));
-  const gpa = useMemo(() => {
-    const totalCredits = courses.reduce((s, c) => s + c.credit, 0);
-    const totalPoints = courses.reduce((s, c) => s + c.credit * c.grade, 0);
-    return totalCredits > 0 ? (totalPoints / totalCredits).toFixed(2) : '0.00';
+  const updateCourse = (i: number, field: string, val: any) => 
+    setCourses(p => p.map((c, idx) => idx === i ? { ...c, [field]: val } : c));
+
+  const addSemester = () => setSemesters(p => [...p, { gpa: 3.5, credits: 15 }]);
+  const removeSemester = (i: number) => setSemesters(p => p.filter((_, idx) => idx !== i));
+  const updateSemester = (i: number, field: string, val: number) => 
+    setSemesters(p => p.map((s, idx) => idx === i ? { ...s, [field]: val } : s));
+
+  const loadExample = () => {
+    if (mode === 'gpa') {
+      setCourses([
+        { name: 'Data Structures', credit: 3, grade: 4.0 },
+        { name: 'Database Systems', credit: 3, grade: 3.7 },
+        { name: 'Operating Systems', credit: 3, grade: 3.3 },
+        { name: 'Computer Networks', credit: 3, grade: 3.7 },
+      ]);
+    } else {
+      setSemesters([
+        { gpa: 3.8, credits: 15 },
+        { gpa: 3.92, credits: 18 },
+        { gpa: 3.75, credits: 15 },
+      ]);
+    }
+  };
+
+  const resetAll = () => {
+    if (mode === 'gpa') setCourses([]);
+    else setSemesters([]);
+  };
+
+  // GPA Calculation
+  const gpaResult = useMemo(() => {
+    const validCourses = courses.filter(c => c.credit > 0);
+    const totalCredits = validCourses.reduce((s, c) => s + c.credit, 0);
+    const totalPoints = validCourses.reduce((s, c) => s + c.credit * c.grade, 0);
+    const gpa = totalCredits > 0 ? totalPoints / totalCredits : 0;
+    return {
+      gpa: gpa.toFixed(2),
+      totalCredits,
+      totalPoints: totalPoints.toFixed(2),
+      courseCount: validCourses.length,
+    };
   }, [courses]);
+
+  // CGPA Calculation
+  const cgpaResult = useMemo(() => {
+    const totalCredits = semesters.reduce((s, sem) => s + sem.credits, 0);
+    const totalPoints = semesters.reduce((s, sem) => s + (sem.gpa * sem.credits), 0);
+    const cgpa = totalCredits > 0 ? totalPoints / totalCredits : 0;
+    return {
+      cgpa: cgpa.toFixed(2),
+      totalCredits,
+      totalPoints: totalPoints.toFixed(2),
+      semesterCount: semesters.length,
+    };
+  }, [semesters]);
+
+  const result = mode === 'gpa' ? gpaResult : cgpaResult;
+  const resultValue = mode === 'gpa' ? gpaResult.gpa : cgpaResult.cgpa;
+  const resultLabel = mode === 'gpa' ? 'Your Semester GPA' : 'Your Cumulative GPA';
 
   return (
     <div className="tool-container">
-      <ToolHeader icon="fa-chart-line" title="GPA/CGPA Calculator" description="Calculate your GPA" color="#f59e0b" />
-      <div className="space-y-2">
-        {courses.map((c, i) => (
-          <div key={i} className="flex flex-wrap gap-2 items-center p-2 rounded-lg" style={{ background: 'var(--bg-tertiary)' }}>
-            <input type="text" value={c.name} onChange={e => update(i, 'name', e.target.value)} placeholder="Course" className="input-field flex-1 min-w-[100px] text-sm" />
-            <input type="number" min="0" max="10" value={c.credit} onChange={e => update(i, 'credit', +e.target.value)} placeholder="Credits" className="input-field w-20 text-sm" />
-            <select value={c.grade} onChange={e => update(i, 'grade', +e.target.value)} className="input-field w-24 text-sm">
-              {gradeScale.map(g => <option key={g.value} value={g.value}>{g.label} ({g.value})</option>)}
-            </select>
-            <button onClick={() => removeCourse(i)} className="text-red-500 p-2"><i className="fas fa-trash"></i></button>
-          </div>
-        ))}
-      </div>
-      <div className="flex flex-wrap gap-2 mt-4">
-        <Button onClick={addCourse} icon="fa-plus" variant="secondary">Add Course</Button>
-        <div className="ml-auto p-3 rounded-lg text-center" style={{ background: 'var(--accent)', color: 'white' }}>
-          <p className="text-xs opacity-80">GPA</p>
-          <p className="text-2xl font-bold">{gpa}</p>
+      <ToolHeader icon="fa-chart-line" title="GPA / CGPA Calculator" description="Calculate your semester GPA or overall CGPA using course credits and grades." color="#f59e0b" />
+
+      {/* Mode Selector */}
+      <div className="mb-6">
+        <div className="flex gap-2 p-1 rounded-lg" style={{ background: 'var(--bg-tertiary)' }}>
+          <button
+            onClick={() => setMode('gpa')}
+            className="flex-1 px-4 py-2 rounded-md font-medium transition-all text-sm"
+            style={{
+              background: mode === 'gpa' ? 'var(--accent)' : 'transparent',
+              color: mode === 'gpa' ? 'white' : 'var(--text-primary)',
+            }}
+          >
+            GPA Calculator
+          </button>
+          <button
+            onClick={() => setMode('cgpa')}
+            className="flex-1 px-4 py-2 rounded-md font-medium transition-all text-sm"
+            style={{
+              background: mode === 'cgpa' ? 'var(--accent)' : 'transparent',
+              color: mode === 'cgpa' ? 'white' : 'var(--text-primary)',
+            }}
+          >
+            CGPA Calculator
+          </button>
         </div>
+        <p className="text-xs mt-2 text-center" style={{ color: 'var(--text-muted)' }}>
+          {mode === 'gpa' ? 'GPA = performance for one semester' : 'CGPA = cumulative performance across multiple semesters'}
+        </p>
+      </div>
+
+      {/* GPA Mode */}
+      {mode === 'gpa' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>Your Courses</h3>
+            <div className="flex gap-2">
+              <button onClick={loadExample} className="text-xs px-3 py-1.5 rounded" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}>
+                Use Example
+              </button>
+              {courses.length > 0 && (
+                <button onClick={resetAll} className="text-xs px-3 py-1.5 rounded" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}>
+                  Clear All
+                </button>
+              )}
+            </div>
+          </div>
+
+          {courses.length === 0 ? (
+            <div className="text-center py-8 rounded-lg" style={{ background: 'var(--bg-tertiary)' }}>
+              <i className="fas fa-book text-3xl mb-2" style={{ color: 'var(--text-muted)' }}></i>
+              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No courses added yet</p>
+              <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Add your courses to calculate your GPA</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {courses.map((c, i) => (
+                <div key={i} className="p-4 rounded-lg" style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)' }}>
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <label className="text-xs font-medium block mb-1" style={{ color: 'var(--text-muted)' }}>Course Name (optional)</label>
+                      <input
+                        type="text"
+                        value={c.name}
+                        onChange={e => updateCourse(i, 'name', e.target.value)}
+                        placeholder="e.g. Data Structures"
+                        className="input-field text-sm"
+                      />
+                    </div>
+                    <button
+                      onClick={() => removeCourse(i)}
+                      className="ml-2 p-2 rounded hover:bg-red-500 hover:text-white transition-colors"
+                      style={{ color: 'var(--text-muted)' }}
+                      aria-label="Remove course"
+                      title="Remove course"
+                    >
+                      <i className="fas fa-trash text-sm"></i>
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-medium block mb-1" style={{ color: 'var(--text-muted)' }}>Credits</label>
+                      <input
+                        type="number"
+                        min="0.5"
+                        step="0.5"
+                        value={c.credit}
+                        onChange={e => updateCourse(i, 'credit', Math.max(0.5, +e.target.value))}
+                        className="input-field text-sm"
+                      />
+                      <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Credit hours for this course</p>
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium block mb-1" style={{ color: 'var(--text-muted)' }}>Grade</label>
+                      <select
+                        value={c.grade}
+                        onChange={e => updateCourse(i, 'grade', +e.target.value)}
+                        className="input-field text-sm"
+                      >
+                        {gradeScale.map(g => (
+                          <option key={g.value} value={g.value}>{g.label} — {g.value.toFixed(2)}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>
+                    Grade Points: {(c.credit * c.grade).toFixed(2)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <Button onClick={addCourse} icon="fa-plus" variant="secondary">
+            Add Course
+          </Button>
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Add each course you took this semester</p>
+        </div>
+      )}
+
+      {/* CGPA Mode */}
+      {mode === 'cgpa' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>Your Semesters</h3>
+            <div className="flex gap-2">
+              <button onClick={loadExample} className="text-xs px-3 py-1.5 rounded" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}>
+                Use Example
+              </button>
+              {semesters.length > 0 && (
+                <button onClick={resetAll} className="text-xs px-3 py-1.5 rounded" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}>
+                  Clear All
+                </button>
+              )}
+            </div>
+          </div>
+
+          {semesters.length === 0 ? (
+            <div className="text-center py-8 rounded-lg" style={{ background: 'var(--bg-tertiary)' }}>
+              <i className="fas fa-graduation-cap text-3xl mb-2" style={{ color: 'var(--text-muted)' }}></i>
+              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No semesters added yet</p>
+              <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Add your semesters to calculate your CGPA</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {semesters.map((s, i) => (
+                <div key={i} className="p-4 rounded-lg" style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)' }}>
+                  <div className="flex items-start justify-between mb-3">
+                    <h4 className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>Semester {i + 1}</h4>
+                    <button
+                      onClick={() => removeSemester(i)}
+                      className="p-2 rounded hover:bg-red-500 hover:text-white transition-colors"
+                      style={{ color: 'var(--text-muted)' }}
+                      aria-label="Remove semester"
+                      title="Remove semester"
+                    >
+                      <i className="fas fa-trash text-sm"></i>
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-medium block mb-1" style={{ color: 'var(--text-muted)' }}>GPA</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="4"
+                        step="0.01"
+                        value={s.gpa}
+                        onChange={e => updateSemester(i, 'gpa', Math.min(4, Math.max(0, +e.target.value)))}
+                        className="input-field text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium block mb-1" style={{ color: 'var(--text-muted)' }}>Credits</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={s.credits}
+                        onChange={e => updateSemester(i, 'credits', Math.max(1, +e.target.value))}
+                        className="input-field text-sm"
+                      />
+                    </div>
+                  </div>
+                  <div className="mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>
+                    Quality Points: {(s.gpa * s.credits).toFixed(2)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <Button onClick={addSemester} icon="fa-plus" variant="secondary">
+            Add Semester
+          </Button>
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Add each semester's GPA and total credits</p>
+        </div>
+      )}
+
+      {/* Result Card */}
+      {(courses.length > 0 || semesters.length > 0) && (
+        <div className="mt-6 p-6 rounded-lg text-center" style={{ background: 'var(--bg-tertiary)', border: '2px solid var(--accent)' }}>
+          <p className="text-sm font-medium mb-2" style={{ color: 'var(--text-muted)' }}>{resultLabel}</p>
+          <p className="text-5xl font-bold mb-2" style={{ color: 'var(--accent)' }}>{resultValue}</p>
+          <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>out of 4.00</p>
+          
+          <div className="grid grid-cols-3 gap-3 text-center">
+            <div>
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                {mode === 'gpa' ? 'Courses' : 'Semesters'}
+              </p>
+              <p className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>
+                {mode === 'gpa' ? gpaResult.courseCount : cgpaResult.semesterCount}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Total Credits</p>
+              <p className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>{result.totalCredits}</p>
+            </div>
+            <div>
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Quality Points</p>
+              <p className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>{result.totalPoints}</p>
+            </div>
+          </div>
+
+          {/* Calculation Details */}
+          <button
+            onClick={() => setShowCalcDetails(!showCalcDetails)}
+            className="mt-4 text-xs underline"
+            style={{ color: 'var(--accent)' }}
+          >
+            {showCalcDetails ? 'Hide' : 'Show'} Calculation Details
+          </button>
+
+          {showCalcDetails && (
+            <div className="mt-4 p-4 rounded-lg text-left text-xs" style={{ background: 'var(--card-bg)' }}>
+              {mode === 'gpa' ? (
+                <div className="space-y-2">
+                  {courses.filter(c => c.credit > 0).map((c, i) => (
+                    <div key={i} style={{ color: 'var(--text-secondary)' }}>
+                      {c.name || `Course ${i + 1}`}: {c.credit} credits × {c.grade.toFixed(2)} = {(c.credit * c.grade).toFixed(2)}
+                    </div>
+                  ))}
+                  <div className="pt-2 border-t" style={{ borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}>
+                    <p>Total Quality Points: {result.totalPoints}</p>
+                    <p>Total Credits: {result.totalCredits}</p>
+                    <p className="font-bold mt-1">GPA: {result.totalPoints} ÷ {result.totalCredits} = {resultValue}</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {semesters.map((s, i) => (
+                    <div key={i} style={{ color: 'var(--text-secondary)' }}>
+                      Semester {i + 1}: {s.gpa.toFixed(2)} × {s.credits} = {(s.gpa * s.credits).toFixed(2)}
+                    </div>
+                  ))}
+                  <div className="pt-2 border-t" style={{ borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}>
+                    <p>Total Quality Points: {result.totalPoints}</p>
+                    <p>Total Credits: {result.totalCredits}</p>
+                    <p className="font-bold mt-1">CGPA: {result.totalPoints} ÷ {result.totalCredits} = {resultValue}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Help Section */}
+      <div className="mt-6 p-4 rounded-lg" style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)' }}>
+        <button
+          onClick={() => setShowGradeScale(!showGradeScale)}
+          className="w-full flex items-center justify-between text-sm font-medium"
+          style={{ color: 'var(--text-primary)' }}
+        >
+          <span>
+            <i className="fas fa-info-circle mr-2" style={{ color: 'var(--accent)' }}></i>
+            How does this work?
+          </span>
+          <i className={`fas fa-chevron-${showGradeScale ? 'up' : 'down'}`} style={{ color: 'var(--text-muted)' }}></i>
+        </button>
+
+        {showGradeScale && (
+          <div className="mt-4 space-y-4">
+            <div>
+              <p className="text-xs font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>GPA Formula:</p>
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                GPA = Total Quality Points ÷ Total Credits
+              </p>
+              <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>
+                Each course's grade point is multiplied by its credits. Those values are added together and divided by your total credits.
+              </p>
+            </div>
+
+            <div>
+              <p className="text-xs font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>Grade Scale (4.00):</p>
+              <div className="grid grid-cols-2 gap-1 text-xs">
+                {gradeScale.map(g => (
+                  <div key={g.label} className="flex justify-between p-1 rounded" style={{ background: 'var(--card-bg)' }}>
+                    <span style={{ color: 'var(--text-primary)' }}>{g.label}</span>
+                    <span style={{ color: 'var(--text-muted)' }}>{g.value.toFixed(2)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
