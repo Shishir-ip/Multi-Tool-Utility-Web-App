@@ -848,6 +848,24 @@ export const CollageMaker: React.FC = () => {
     drawCollage();
   }, [drawCollage]);
 
+  // Add non-passive wheel event listener to prevent page scroll
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      if (selectedImage !== null) {
+        e.preventDefault();
+      }
+    };
+
+    canvas.addEventListener('wheel', handleWheel, { passive: false });
+
+    return () => {
+      canvas.removeEventListener('wheel', handleWheel);
+    };
+  }, [selectedImage]);
+
   // Draw crop preview
   useEffect(() => {
     if (selectedImage === null || !cropCanvasRef.current || editingMode !== 'crop') return;
@@ -1093,6 +1111,7 @@ export const CollageMaker: React.FC = () => {
   const handleCanvasWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
     if (selectedImage === null) return;
     e.preventDefault();
+    e.stopPropagation();
 
     const zoomDelta = e.deltaY > 0 ? -0.1 : 0.1;
     const newZoom = Math.max(0.5, Math.min(3, images[selectedImage].zoom + zoomDelta));
@@ -1221,7 +1240,8 @@ export const CollageMaker: React.FC = () => {
                     style={{ 
                       borderColor: 'var(--border-color)',
                       boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-                      cursor: selectedImage !== null ? (isCanvasDragging ? 'grabbing' : 'grab') : 'pointer'
+                      cursor: selectedImage !== null ? (isCanvasDragging ? 'grabbing' : 'grab') : 'pointer',
+                      touchAction: 'none'
                     }}
                     onClick={handleCanvasClick}
                     onMouseDown={handleCanvasMouseDown}
