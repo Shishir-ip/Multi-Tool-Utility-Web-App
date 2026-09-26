@@ -604,76 +604,484 @@ export const ExifViewer: React.FC = () => {
 
 // ── Photo Collage Maker ──
 export const CollageMaker: React.FC = () => {
-  const [images, setImages] = useState<string[]>([]);
-  const [cols, setCols] = useState(3);
-  const [gap, setGap] = useState(4);
+  const [images, setImages] = useState<Array<{ src: string; zoom: number; offsetX: number; offsetY: number }>>([]);
+  const [selectedImage, setSelectedImage] = useState<number | null>(null);
+  const [aspectRatio, setAspectRatio] = useState('1:1');
+  const [layout, setLayout] = useState('grid-2x2');
+  const [gap, setGap] = useState(8);
   const [bgColor, setBgColor] = useState('#ffffff');
+  const [borderRadius, setBorderRadius] = useState(0);
+  const [shadow, setShadow] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
+
+  // Aspect ratios
+  const aspectRatios = [
+    { label: '1:1 (Square)', value: '1:1', width: 1, height: 1 },
+    { label: '16:9 (Landscape)', value: '16:9', width: 16, height: 9 },
+    { label: '9:16 (Portrait)', value: '9:16', width: 9, height: 16 },
+    { label: '4:3', value: '4:3', width: 4, height: 3 },
+    { label: '3:4', value: '3:4', width: 3, height: 4 },
+    { label: '3:2', value: '3:2', width: 3, height: 2 },
+    { label: '2:3', value: '2:3', width: 2, height: 3 },
+  ];
+
+  // Layout presets
+  const layouts = [
+    { label: '2×2 Grid', value: 'grid-2x2', cols: 2, rows: 2 },
+    { label: '3×3 Grid', value: 'grid-3x3', cols: 3, rows: 3 },
+    { label: '2×3 Grid', value: 'grid-2x3', cols: 2, rows: 3 },
+    { label: '3×2 Grid', value: 'grid-3x2', cols: 3, rows: 2 },
+    { label: '1+2 Split', value: 'split-1-2', cols: 0, rows: 0, custom: true },
+    { label: '2+1 Split', value: 'split-2-1', cols: 0, rows: 0, custom: true },
+    { label: 'Featured Left', value: 'featured-left', cols: 0, rows: 0, custom: true },
+    { label: 'Featured Right', value: 'featured-right', cols: 0, rows: 0, custom: true },
+  ];
 
   const handleFiles = (fl: FileList) => {
     Array.from(fl).filter(f => f.type.startsWith('image/')).forEach(f => {
       const reader = new FileReader();
-      reader.onload = e => setImages(prev => [...prev, e.target?.result as string]);
+      reader.onload = e => {
+        setImages(prev => [...prev, { 
+          src: e.target?.result as string, 
+          zoom: 1, 
+          offsetX: 0, 
+          offsetY: 0 
+        }]);
+      };
       reader.readAsDataURL(f);
     });
   };
 
-  useEffect(() => {
+  const removeImage = (index: number) => {
+    setImages(images.filter((_, i) => i !== index));
+    if (selectedImage === index) setSelectedImage(null);
+  };
+
+  const updateImage = (index: number, updates: Partial<typeof images[0]>) => {
+    setImages(images.map((img, i) => i === index ? { ...img, ...updates } : img));
+  };
+
+  const moveImage = (from: number, to: number) => {
+    if (to < 0 || to >= images.length) return;
+    const newImages = [...images];
+    const [moved] = newImages.splice(from, 1);
+    newImages.splice(to, 0, moved);
+    setImages(newImages);
+  };
+
+  const getCanvasDimensions = () => {
+    const ratio = aspectRatios.find(r => r.value === aspectRatio)!;
+    const baseSize = 800;
+    const width = baseSize;
+    const height = (baseSize * ratio.height) / ratio.width;
+    return { width, height };
+  };
+
+  const drawCollage = useCallback(() => {
     if (!canvasRef.current || images.length === 0) return;
     const c = canvasRef.current;
     const ctx = c.getContext('2d')!;
-    const size = 600;
-    c.width = size; c.height = size;
-    ctx.fillStyle = bgColor; ctx.fillRect(0, 0, size, size);
-    const rows = Math.ceil(images.length / cols);
-    const cellW = (size - gap * (cols + 1)) / cols;
-    const cellH = (size - gap * (rows + 1)) / rows;
+    const { width, height } = getCanvasDimensions();
+    
+    c.width = width;
+    c.height = height;
+    
+    // Draw background
+    ctx.fillStyle = bgColor;
+    ctx.fillRect(0, 0, width, height);
+
+    const currentLayout = layouts.find(l => l.value === layout)!;
+    const cellPositions: Array<{ x: number; y: number; w: number; h: number }> = [];
+
+    // Calculate cell positions based on layout
+    if (currentLayout.custom) {
+      // Custom layouts
+      if (layout === 'split-1-2') {
+        const halfW = (width - gap * 3) / 2;
+        const fullH = height - gap * 2;
+        cellPositions.push({ x: gap, y: gap, w: halfW, h: fullH });
+        const quarterH = (fullH - gap) / 2;
+        cellPositions.push({ x: gap * 2 + halfW, y: gap, w: halfW, h: quarterH });
+        cellPositions.push({ x: gap * 2 + halfW, y: gap * 2 + quarterH, w: halfW, h: quarterH });
+      } else if (layout === 'split-2-1') {
+        const halfW = (width - gap * 3) / 2;
+        const fullH = height - gap * 2;
+        const quarterH = (fullH - gap) / 2;
+        cellPositions.push({ x: gap, y: gap, w: halfW, h: quarterH });
+        cellPositions.push({ x: gap, y: gap * 2 + quarterH, w: halfW, h: quarterH });
+        cellPositions.push({ x: gap * 2 + halfW, y: gap, w: halfW, h: fullH });
+      } else if (layout === 'featured-left') {
+        const largeW = (width - gap * 3) * 0.6;
+        const smallW = width - gap * 3 - largeW;
+        const fullH = height - gap * 2;
+        cellPositions.push({ x: gap, y: gap, w: largeW, h: fullH });
+        const thirdH = (fullH - gap * 2) / 3;
+        for (let i = 0; i < 3; i++) {
+          cellPositions.push({ 
+            x: gap * 2 + largeW, 
+            y: gap + i * (thirdH + gap), 
+            w: smallW, 
+            h: thirdH 
+          });
+        }
+      } else if (layout === 'featured-right') {
+        const largeW = (width - gap * 3) * 0.6;
+        const smallW = width - gap * 3 - largeW;
+        const fullH = height - gap * 2;
+        const thirdH = (fullH - gap * 2) / 3;
+        for (let i = 0; i < 3; i++) {
+          cellPositions.push({ 
+            x: gap, 
+            y: gap + i * (thirdH + gap), 
+            w: smallW, 
+            h: thirdH 
+          });
+        }
+        cellPositions.push({ x: gap * 2 + smallW, y: gap, w: largeW, h: fullH });
+      }
+    } else {
+      // Grid layouts
+      const cellW = (width - gap * (currentLayout.cols + 1)) / currentLayout.cols;
+      const cellH = (height - gap * (currentLayout.rows + 1)) / currentLayout.rows;
+      
+      for (let i = 0; i < Math.min(images.length, currentLayout.cols * currentLayout.rows); i++) {
+        const col = i % currentLayout.cols;
+        const row = Math.floor(i / currentLayout.cols);
+        cellPositions.push({
+          x: gap + col * (cellW + gap),
+          y: gap + row * (cellH + gap),
+          w: cellW,
+          h: cellH
+        });
+      }
+    }
+
+    // Draw images
     let loaded = 0;
-    images.forEach((src, i) => {
+    images.slice(0, cellPositions.length).forEach((imgData, i) => {
       const img = new Image();
       img.onload = () => {
-        const col = i % cols, row = Math.floor(i / cols);
-        const x = gap + col * (cellW + gap), y = gap + row * (cellH + gap);
-        const scale = Math.max(cellW / img.width, cellH / img.height);
-        const w = img.width * scale, h = img.height * scale;
-        ctx.drawImage(img, x + (cellW - w) / 2, y + (cellH - h) / 2, w, h);
+        const pos = cellPositions[i];
+        
+        // Apply shadow if enabled
+        if (shadow) {
+          ctx.save();
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+          ctx.shadowBlur = 10;
+          ctx.shadowOffsetX = 0;
+          ctx.shadowOffsetY = 4;
+        }
+
+        // Apply border radius
+        if (borderRadius > 0) {
+          ctx.save();
+          ctx.beginPath();
+          ctx.roundRect(pos.x, pos.y, pos.w, pos.h, borderRadius);
+          ctx.clip();
+        }
+
+        // Calculate image dimensions with zoom and offset
+        const scale = Math.max(pos.w / img.width, pos.h / img.height) * imgData.zoom;
+        const w = img.width * scale;
+        const h = img.height * scale;
+        
+        // Center the image with offset
+        const x = pos.x + (pos.w - w) / 2 + imgData.offsetX;
+        const y = pos.y + (pos.h - h) / 2 + imgData.offsetY;
+
+        ctx.drawImage(img, x, y, w, h);
+
+        if (borderRadius > 0) ctx.restore();
+        if (shadow) ctx.restore();
+
         loaded++;
-        if (loaded === images.length) {}
       };
-      img.src = src;
+      img.src = imgData.src;
     });
-  }, [images, cols, gap, bgColor]);
+  }, [images, aspectRatio, layout, gap, bgColor, borderRadius, shadow]);
+
+  useEffect(() => {
+    drawCollage();
+  }, [drawCollage]);
 
   const download = () => {
     if (!canvasRef.current) return;
     const a = document.createElement('a');
-    a.href = canvasRef.current.toDataURL('image/png'); a.download = 'collage.png'; a.click();
+    a.href = canvasRef.current.toDataURL('image/png');
+    a.download = 'collage.png';
+    a.click();
+  };
+
+  const handleImageClick = (index: number) => {
+    setSelectedImage(selectedImage === index ? null : index);
   };
 
   return (
     <div className="tool-container">
-      <ToolHeader icon="fa-th" title="Photo Collage Maker" description="Create photo collages from images" color="#8b5cf6" />
-      <DropZone onFiles={handleFiles} accept="image/*" multiple icon="fa-images" title="Add photos" subtitle="Select multiple images" />
+      <ToolHeader icon="fa-th" title="Photo Collage Maker" description="Create professional photo collages with custom layouts" color="#8b5cf6" />
+      
+      <DropZone onFiles={handleFiles} accept="image/*" multiple icon="fa-images" title="Add photos" subtitle="Select multiple images to get started" />
+      
       {images.length > 0 && (
-        <div className="mt-4 space-y-4">
-          <div className="flex flex-wrap gap-4 items-end">
-            <div>
-              <label className="text-sm font-medium block mb-1" style={{ color: 'var(--text-secondary)' }}>Columns</label>
-              <input type="number" min="1" max="6" value={cols} onChange={e => setCols(+e.target.value)} className="input-field w-20" />
+        <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Controls Panel */}
+          <div className="lg:col-span-1 space-y-4">
+            {/* Aspect Ratio */}
+            <div className="p-4 rounded-lg" style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)' }}>
+              <label className="text-sm font-medium block mb-2" style={{ color: 'var(--text-primary)' }}>
+                <i className="fas fa-expand-arrows-alt mr-2"></i>
+                Aspect Ratio
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {aspectRatios.map(ratio => (
+                  <button
+                    key={ratio.value}
+                    onClick={() => setAspectRatio(ratio.value)}
+                    className="px-3 py-2 rounded text-xs font-medium transition-all"
+                    style={{
+                      background: aspectRatio === ratio.value ? '#8b5cf6' : 'var(--card-bg)',
+                      color: aspectRatio === ratio.value ? 'white' : 'var(--text-primary)',
+                      border: `1px solid ${aspectRatio === ratio.value ? '#8b5cf6' : 'var(--border-color)'}`
+                    }}
+                  >
+                    {ratio.label}
+                  </button>
+                ))}
+              </div>
             </div>
-            <div>
-              <label className="text-sm font-medium block mb-1" style={{ color: 'var(--text-secondary)' }}>Gap (px)</label>
-              <input type="number" min="0" max="20" value={gap} onChange={e => setGap(+e.target.value)} className="input-field w-20" />
+
+            {/* Layout Preset */}
+            <div className="p-4 rounded-lg" style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)' }}>
+              <label className="text-sm font-medium block mb-2" style={{ color: 'var(--text-primary)' }}>
+                <i className="fas fa-th-large mr-2"></i>
+                Layout
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {layouts.map(l => (
+                  <button
+                    key={l.value}
+                    onClick={() => setLayout(l.value)}
+                    className="px-3 py-2 rounded text-xs font-medium transition-all"
+                    style={{
+                      background: layout === l.value ? '#8b5cf6' : 'var(--card-bg)',
+                      color: layout === l.value ? 'white' : 'var(--text-primary)',
+                      border: `1px solid ${layout === l.value ? '#8b5cf6' : 'var(--border-color)'}`
+                    }}
+                  >
+                    {l.label}
+                  </button>
+                ))}
+              </div>
             </div>
-            <div>
-              <label className="text-sm font-medium block mb-1" style={{ color: 'var(--text-secondary)' }}>Background</label>
-              <input type="color" value={bgColor} onChange={e => setBgColor(e.target.value)} className="w-12 h-10 rounded cursor-pointer border" style={{ borderColor: 'var(--border-color)' }} />
+
+            {/* Style Options */}
+            <div className="p-4 rounded-lg" style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)' }}>
+              <label className="text-sm font-medium block mb-3" style={{ color: 'var(--text-primary)' }}>
+                <i className="fas fa-palette mr-2"></i>
+                Style
+              </label>
+              
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs block mb-1" style={{ color: 'var(--text-secondary)' }}>Gap: {gap}px</label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="30"
+                    value={gap}
+                    onChange={e => setGap(+e.target.value)}
+                    className="w-full"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs block mb-1" style={{ color: 'var(--text-secondary)' }}>Border Radius: {borderRadius}px</label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="50"
+                    value={borderRadius}
+                    onChange={e => setBorderRadius(+e.target.value)}
+                    className="w-full"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs block mb-1" style={{ color: 'var(--text-secondary)' }}>Background Color</label>
+                  <input
+                    type="color"
+                    value={bgColor}
+                    onChange={e => setBgColor(e.target.value)}
+                    className="w-full h-10 rounded cursor-pointer border"
+                    style={{ borderColor: 'var(--border-color)' }}
+                  />
+                </div>
+
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={shadow}
+                    onChange={e => setShadow(e.target.checked)}
+                    className="w-4 h-4"
+                  />
+                  <span className="text-sm" style={{ color: 'var(--text-primary)' }}>Add Shadow</span>
+                </label>
+              </div>
             </div>
+
+            {/* Image List */}
+            <div className="p-4 rounded-lg" style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)' }}>
+              <label className="text-sm font-medium block mb-2" style={{ color: 'var(--text-primary)' }}>
+                <i className="fas fa-images mr-2"></i>
+                Images ({images.length})
+              </label>
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {images.map((img, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center gap-2 p-2 rounded cursor-pointer transition-all"
+                    style={{
+                      background: selectedImage === i ? 'rgba(139, 92, 246, 0.2)' : 'var(--card-bg)',
+                      border: `1px solid ${selectedImage === i ? '#8b5cf6' : 'var(--border-color)'}`
+                    }}
+                    onClick={() => handleImageClick(i)}
+                  >
+                    <img src={img.src} alt="" className="w-12 h-12 object-cover rounded" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs truncate" style={{ color: 'var(--text-primary)' }}>
+                        Image {i + 1}
+                      </p>
+                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                        Zoom: {(img.zoom * 100).toFixed(0)}%
+                      </p>
+                    </div>
+                    <div className="flex gap-1">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); moveImage(i, i - 1); }}
+                        className="p-1 rounded hover:bg-opacity-20"
+                        style={{ color: 'var(--text-secondary)' }}
+                        disabled={i === 0}
+                      >
+                        <i className="fas fa-arrow-up text-xs"></i>
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); moveImage(i, i + 1); }}
+                        className="p-1 rounded hover:bg-opacity-20"
+                        style={{ color: 'var(--text-secondary)' }}
+                        disabled={i === images.length - 1}
+                      >
+                        <i className="fas fa-arrow-down text-xs"></i>
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); removeImage(i); }}
+                        className="p-1 rounded hover:bg-red-500 hover:text-white"
+                        style={{ color: '#ef4444' }}
+                      >
+                        <i className="fas fa-trash text-xs"></i>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Selected Image Controls */}
+            {selectedImage !== null && images[selectedImage] && (
+              <div className="p-4 rounded-lg" style={{ background: 'rgba(139, 92, 246, 0.1)', border: '2px solid #8b5cf6' }}>
+                <label className="text-sm font-medium block mb-3" style={{ color: 'var(--text-primary)' }}>
+                  <i className="fas fa-crop-alt mr-2"></i>
+                  Adjust Image {selectedImage + 1}
+                </label>
+                
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs block mb-1" style={{ color: 'var(--text-secondary)' }}>
+                      Zoom: {(images[selectedImage].zoom * 100).toFixed(0)}%
+                    </label>
+                    <input
+                      type="range"
+                      min="0.5"
+                      max="3"
+                      step="0.1"
+                      value={images[selectedImage].zoom}
+                      onChange={e => updateImage(selectedImage, { zoom: +e.target.value })}
+                      className="w-full"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs block mb-1" style={{ color: 'var(--text-secondary)' }}>
+                      Horizontal Position
+                    </label>
+                    <input
+                      type="range"
+                      min="-200"
+                      max="200"
+                      value={images[selectedImage].offsetX}
+                      onChange={e => updateImage(selectedImage, { offsetX: +e.target.value })}
+                      className="w-full"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs block mb-1" style={{ color: 'var(--text-secondary)' }}>
+                      Vertical Position
+                    </label>
+                    <input
+                      type="range"
+                      min="-200"
+                      max="200"
+                      value={images[selectedImage].offsetY}
+                      onChange={e => updateImage(selectedImage, { offsetY: +e.target.value })}
+                      className="w-full"
+                    />
+                  </div>
+
+                  <button
+                    onClick={() => updateImage(selectedImage, { zoom: 1, offsetX: 0, offsetY: 0 })}
+                    className="w-full px-3 py-2 rounded text-sm"
+                    style={{ background: 'var(--card-bg)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' }}
+                  >
+                    <i className="fas fa-undo mr-2"></i>
+                    Reset Position
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
-          <canvas ref={canvasRef} className="max-w-full rounded-lg border mx-auto" style={{ borderColor: 'var(--border-color)' }} />
-          <div className="flex flex-wrap gap-2">
-            <Button onClick={download} icon="fa-download">Download Collage</Button>
-            <Button variant="secondary" onClick={() => setImages([])} icon="fa-trash">Clear All</Button>
+
+          {/* Preview and Canvas */}
+          <div className="lg:col-span-2">
+            <div className="sticky top-4">
+              <div className="p-4 rounded-lg mb-4" style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)' }}>
+                <p className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>
+                  <i className="fas fa-info-circle mr-1"></i>
+                  Click on an image in the list to adjust its position and zoom
+                </p>
+              </div>
+              
+              <canvas
+                ref={canvasRef}
+                className="w-full rounded-lg border mx-auto"
+                style={{ 
+                  borderColor: 'var(--border-color)',
+                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+                }}
+              />
+
+              <div className="flex flex-wrap gap-2 mt-4">
+                <Button onClick={download} icon="fa-download">
+                  Download Collage
+                </Button>
+                <Button variant="secondary" onClick={() => { setImages([]); setSelectedImage(null); }} icon="fa-trash">
+                  Clear All
+                </Button>
+                <Button variant="secondary" onClick={() => setImages([])} icon="fa-plus">
+                  Add More
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
       )}
