@@ -626,6 +626,9 @@ export const CollageMaker: React.FC = () => {
   const cropCanvasRef = useRef<HTMLCanvasElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [isCanvasDragging, setIsCanvasDragging] = useState(false);
+  const [canvasDragStart, setCanvasDragStart] = useState({ x: 0, y: 0 });
+  const [lastPinchDistance, setLastPinchDistance] = useState<number | null>(null);
 
   // Aspect ratios
   const aspectRatios = [
@@ -820,10 +823,26 @@ export const CollageMaker: React.FC = () => {
 
         if (borderRadius > 0) ctx.restore();
         if (shadow) ctx.restore();
+
+        // Draw selection indicator
+        if (selectedImage === i) {
+          ctx.save();
+          ctx.strokeStyle = '#8b5cf6';
+          ctx.lineWidth = 4;
+          ctx.setLineDash([10, 5]);
+          if (borderRadius > 0) {
+            ctx.beginPath();
+            ctx.roundRect(pos.x, pos.y, pos.w, pos.h, borderRadius);
+            ctx.stroke();
+          } else {
+            ctx.strokeRect(pos.x, pos.y, pos.w, pos.h);
+          }
+          ctx.restore();
+        }
       };
       img.src = imgData.src;
     });
-  }, [images, aspectRatio, layout, gap, bgColor, borderRadius, shadow]);
+  }, [images, aspectRatio, layout, gap, bgColor, borderRadius, shadow, selectedImage]);
 
   useEffect(() => {
     drawCollage();
@@ -930,6 +949,227 @@ export const CollageMaker: React.FC = () => {
     setIsDragging(false);
   };
 
+  // Get cell positions for click detection
+  const getCellPositions = useCallback(() => {
+    if (!canvasRef.current || images.length === 0) return [];
+    const { width, height } = getCanvasDimensions();
+    const currentLayout = layouts.find(l => l.value === layout)!;
+    const cellPositions: Array<{ x: number; y: number; w: number; h: number; index: number }> = [];
+
+    if (currentLayout.custom) {
+      if (layout === 'split-1-2') {
+        const halfW = (width - gap * 3) / 2;
+        const fullH = height - gap * 2;
+        cellPositions.push({ x: gap, y: gap, w: halfW, h: fullH, index: 0 });
+        const quarterH = (fullH - gap) / 2;
+        cellPositions.push({ x: gap * 2 + halfW, y: gap, w: halfW, h: quarterH, index: 1 });
+        cellPositions.push({ x: gap * 2 + halfW, y: gap * 2 + quarterH, w: halfW, h: quarterH, index: 2 });
+      } else if (layout === 'split-2-1') {
+        const halfW = (width - gap * 3) / 2;
+        const fullH = height - gap * 2;
+        const quarterH = (fullH - gap) / 2;
+        cellPositions.push({ x: gap, y: gap, w: halfW, h: quarterH, index: 0 });
+        cellPositions.push({ x: gap, y: gap * 2 + quarterH, w: halfW, h: quarterH, index: 1 });
+        cellPositions.push({ x: gap * 2 + halfW, y: gap, w: halfW, h: fullH, index: 2 });
+      } else if (layout === 'featured-left') {
+        const largeW = (width - gap * 3) * 0.6;
+        const smallW = width - gap * 3 - largeW;
+        const fullH = height - gap * 2;
+        cellPositions.push({ x: gap, y: gap, w: largeW, h: fullH, index: 0 });
+        const thirdH = (fullH - gap * 2) / 3;
+        for (let i = 0; i < 3; i++) {
+          cellPositions.push({ 
+            x: gap * 2 + largeW, 
+            y: gap + i * (thirdH + gap), 
+            w: smallW, 
+            h: thirdH,
+            index: i + 1
+          });
+        }
+      } else if (layout === 'featured-right') {
+        const largeW = (width - gap * 3) * 0.6;
+        const smallW = width - gap * 3 - largeW;
+        const fullH = height - gap * 2;
+        const thirdH = (fullH - gap * 2) / 3;
+        for (let i = 0; i < 3; i++) {
+          cellPositions.push({ 
+            x: gap, 
+            y: gap + i * (thirdH + gap), 
+            w: smallW, 
+            h: thirdH,
+            index: i
+          });
+        }
+        cellPositions.push({ x: gap * 2 + smallW, y: gap, w: largeW, h: fullH, index: 3 });
+      }
+    } else {
+      const cellW = (width - gap * (currentLayout.cols + 1)) / currentLayout.cols;
+      const cellH = (height - gap * (currentLayout.rows + 1)) / currentLayout.rows;
+      
+      for (let i = 0; i < Math.min(images.length, currentLayout.cols * currentLayout.rows); i++) {
+        const col = i % currentLayout.cols;
+        const row = Math.floor(i / currentLayout.cols);
+        cellPositions.push({
+          x: gap + col * (cellW + gap),
+          y: gap + row * (cellH + gap),
+          w: cellW,
+          h: cellH,
+          index: i
+        });
+      }
+    }
+    return cellPositions;
+  }, [images, layout, gap]);
+
+  // Handle canvas click to select image
+  const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!canvasRef.current || selectedImage !== null) return;
+    
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
+
+    const cellPositions = getCellPositions();
+    const clickedCell = cellPositions.find(cell => 
+      x >= cell.x && x <= cell.x + cell.w &&
+      y >= cell.y && y <= cell.y + cell.h
+    );
+
+    if (clickedCell && clickedCell.index < images.length) {
+      setSelectedImage(clickedCell.index);
+    }
+  };
+
+  // Handle canvas mouse down for dragging
+  const handleCanvasMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (selectedImage === null) return;
+    
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
+
+    setIsCanvasDragging(true);
+    setCanvasDragStart({ x, y });
+  };
+
+  // Handle canvas mouse move for dragging
+  const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!isCanvasDragging || selectedImage === null) return;
+    
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
+
+    const dx = x - canvasDragStart.x;
+    const dy = y - canvasDragStart.y;
+
+    updateImage(selectedImage, {
+      offsetX: images[selectedImage].offsetX + dx,
+      offsetY: images[selectedImage].offsetY + dy
+    });
+
+    setCanvasDragStart({ x, y });
+  };
+
+  // Handle canvas mouse up
+  const handleCanvasMouseUp = () => {
+    setIsCanvasDragging(false);
+  };
+
+  // Handle canvas wheel for zoom
+  const handleCanvasWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
+    if (selectedImage === null) return;
+    e.preventDefault();
+
+    const zoomDelta = e.deltaY > 0 ? -0.1 : 0.1;
+    const newZoom = Math.max(0.5, Math.min(3, images[selectedImage].zoom + zoomDelta));
+
+    updateImage(selectedImage, { zoom: newZoom });
+  };
+
+  // Handle touch start for pinch zoom
+  const handleCanvasTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    if (e.touches.length === 2) {
+      const touch1 = e.touches[0];
+      const touch2 = e.touches[1];
+      const distance = Math.hypot(
+        touch1.clientX - touch2.clientX,
+        touch1.clientY - touch2.clientY
+      );
+      setLastPinchDistance(distance);
+    } else if (e.touches.length === 1 && selectedImage !== null) {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      const x = (e.touches[0].clientX - rect.left) * scaleX;
+      const y = (e.touches[0].clientY - rect.top) * scaleY;
+
+      setIsCanvasDragging(true);
+      setCanvasDragStart({ x, y });
+    }
+  };
+
+  // Handle touch move for pinch zoom and drag
+  const handleCanvasTouchMove = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    
+    if (e.touches.length === 2 && lastPinchDistance !== null && selectedImage !== null) {
+      const touch1 = e.touches[0];
+      const touch2 = e.touches[1];
+      const distance = Math.hypot(
+        touch1.clientX - touch2.clientX,
+        touch1.clientY - touch2.clientY
+      );
+      
+      const scale = distance / lastPinchDistance;
+      const newZoom = Math.max(0.5, Math.min(3, images[selectedImage].zoom * scale));
+      
+      updateImage(selectedImage, { zoom: newZoom });
+      setLastPinchDistance(distance);
+    } else if (e.touches.length === 1 && isCanvasDragging && selectedImage !== null) {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      const x = (e.touches[0].clientX - rect.left) * scaleX;
+      const y = (e.touches[0].clientY - rect.top) * scaleY;
+
+      const dx = x - canvasDragStart.x;
+      const dy = y - canvasDragStart.y;
+
+      updateImage(selectedImage, {
+        offsetX: images[selectedImage].offsetX + dx,
+        offsetY: images[selectedImage].offsetY + dy
+      });
+
+      setCanvasDragStart({ x, y });
+    }
+  };
+
+  // Handle touch end
+  const handleCanvasTouchEnd = () => {
+    setIsCanvasDragging(false);
+    setLastPinchDistance(null);
+  };
+
   return (
     <div className="tool-container">
       <ToolHeader icon="fa-th" title="Photo Collage Maker" description="Create professional photo collages" color="#8b5cf6" />
@@ -952,18 +1192,46 @@ export const CollageMaker: React.FC = () => {
                       Preview
                     </h3>
                     <div className="flex gap-2">
+                      {selectedImage !== null && (
+                        <button
+                          onClick={() => setSelectedImage(null)}
+                          className="px-3 py-1.5 rounded text-xs"
+                          style={{ background: '#ef4444', color: 'white' }}
+                        >
+                          <i className="fas fa-times mr-1"></i>
+                          Deselect
+                        </button>
+                      )}
                       <Button onClick={download} icon="fa-download" variant="secondary">
                         Download
                       </Button>
                     </div>
+                  </div>
+                  
+                  {/* Instructions */}
+                  <div className="mb-3 p-3 rounded-lg" style={{ background: 'rgba(139, 92, 246, 0.1)', border: '1px solid #8b5cf6' }}>
+                    <p className="text-xs" style={{ color: 'var(--text-primary)' }}>
+                      <i className="fas fa-info-circle mr-1" style={{ color: '#8b5cf6' }}></i>
+                      <strong>Tip:</strong> Click on any image in the preview to select it, then drag to move or scroll/pinch to zoom!
+                    </p>
                   </div>
                   <canvas
                     ref={canvasRef}
                     className="w-full rounded-lg border"
                     style={{ 
                       borderColor: 'var(--border-color)',
-                      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+                      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+                      cursor: selectedImage !== null ? (isCanvasDragging ? 'grabbing' : 'grab') : 'pointer'
                     }}
+                    onClick={handleCanvasClick}
+                    onMouseDown={handleCanvasMouseDown}
+                    onMouseMove={handleCanvasMouseMove}
+                    onMouseUp={handleCanvasMouseUp}
+                    onMouseLeave={handleCanvasMouseUp}
+                    onWheel={handleCanvasWheel}
+                    onTouchStart={handleCanvasTouchStart}
+                    onTouchMove={handleCanvasTouchMove}
+                    onTouchEnd={handleCanvasTouchEnd}
                   />
                 </div>
               </div>
@@ -1072,47 +1340,30 @@ export const CollageMaker: React.FC = () => {
                           {/* Adjust Mode */}
                           {editingMode === 'adjust' && (
                             <div className="space-y-3">
-                              <div>
-                                <label className="text-xs block mb-1" style={{ color: 'var(--text-secondary)' }}>
-                                  Zoom: {(img.zoom * 100).toFixed(0)}%
-                                </label>
-                                <input
-                                  type="range"
-                                  min="0.5"
-                                  max="3"
-                                  step="0.1"
-                                  value={img.zoom}
-                                  onChange={e => updateImage(i, { zoom: +e.target.value })}
-                                  className="w-full"
-                                />
+                              <div className="p-3 rounded-lg" style={{ background: 'rgba(139, 92, 246, 0.1)', border: '1px solid #8b5cf6' }}>
+                                <p className="text-xs mb-2" style={{ color: 'var(--text-primary)' }}>
+                                  <i className="fas fa-mouse-pointer mr-1" style={{ color: '#8b5cf6' }}></i>
+                                  <strong>Direct Manipulation</strong>
+                                </p>
+                                <ul className="text-xs space-y-1" style={{ color: 'var(--text-secondary)' }}>
+                                  <li>• <strong>Click</strong> on image in preview to select</li>
+                                  <li>• <strong>Drag</strong> to move image</li>
+                                  <li>• <strong>Scroll wheel</strong> to zoom in/out</li>
+                                  <li>• <strong>Pinch</strong> on mobile to zoom</li>
+                                </ul>
                               </div>
 
-                              <div>
-                                <label className="text-xs block mb-1" style={{ color: 'var(--text-secondary)' }}>
-                                  Horizontal: {img.offsetX}px
-                                </label>
-                                <input
-                                  type="range"
-                                  min="-200"
-                                  max="200"
-                                  value={img.offsetX}
-                                  onChange={e => updateImage(i, { offsetX: +e.target.value })}
-                                  className="w-full"
-                                />
-                              </div>
-
-                              <div>
-                                <label className="text-xs block mb-1" style={{ color: 'var(--text-secondary)' }}>
-                                  Vertical: {img.offsetY}px
-                                </label>
-                                <input
-                                  type="range"
-                                  min="-200"
-                                  max="200"
-                                  value={img.offsetY}
-                                  onChange={e => updateImage(i, { offsetY: +e.target.value })}
-                                  className="w-full"
-                                />
+                              <div className="grid grid-cols-2 gap-2">
+                                <div className="p-2 rounded text-center" style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)' }}>
+                                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Zoom</p>
+                                  <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{(img.zoom * 100).toFixed(0)}%</p>
+                                </div>
+                                <div className="p-2 rounded text-center" style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)' }}>
+                                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Position</p>
+                                  <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
+                                    {img.offsetX.toFixed(0)}, {img.offsetY.toFixed(0)}
+                                  </p>
+                                </div>
                               </div>
 
                               <button
@@ -1121,7 +1372,7 @@ export const CollageMaker: React.FC = () => {
                                 style={{ background: 'var(--card-bg)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' }}
                               >
                                 <i className="fas fa-undo mr-1"></i>
-                                Reset
+                                Reset Position
                               </button>
                             </div>
                           )}
