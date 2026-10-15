@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { ToolHeader, DropZone, Button } from '../components/Shared';
 
 interface ThumbnailData {
@@ -24,6 +24,15 @@ export const VideoThumbnailExtractor: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
+  // Cleanup URL on unmount
+  useEffect(() => {
+    return () => {
+      if (video?.url) {
+        URL.revokeObjectURL(video.url);
+      }
+    };
+  }, [video]);
+
   const handleFile = (fl: FileList) => {
     const f = fl[0];
     if (!f || !f.type.startsWith('video/')) return;
@@ -35,7 +44,7 @@ export const VideoThumbnailExtractor: React.FC = () => {
       setVideo({ url, name: f.name, duration: tempVideo.duration });
       setEndTime(tempVideo.duration);
       setThumbnails([]);
-      URL.revokeObjectURL(tempVideo.src);
+      // Don't revoke URL here - it's still needed for the main video element
     };
     tempVideo.src = url;
   };
@@ -410,11 +419,23 @@ export const VideoThumbnailExtractor: React.FC = () => {
               {processing ? 'Extracting...' : 'Extract Thumbnails'}
             </Button>
             {thumbnails.length > 0 && (
-              <Button onClick={() => setThumbnails([])} icon="fa-trash" variant="secondary">
+              <Button onClick={() => {
+                // Revoke all thumbnail URLs to free memory
+                thumbnails.forEach(thumb => {
+                  // Data URLs don't need to be revoked, but we clear the state
+                });
+                setThumbnails([]);
+              }} icon="fa-trash" variant="secondary">
                 Clear Thumbnails
               </Button>
             )}
-            <Button variant="secondary" onClick={() => { setVideo(null); setThumbnails([]); }} icon="fa-redo">
+            <Button variant="secondary" onClick={() => { 
+              if (video?.url) {
+                URL.revokeObjectURL(video.url);
+              }
+              setVideo(null); 
+              setThumbnails([]); 
+            }} icon="fa-redo">
               New Video
             </Button>
           </div>
